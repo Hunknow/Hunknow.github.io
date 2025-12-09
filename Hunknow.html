@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub 仓库文件上传指引</title>
+    <style>
+        /* 基础样式美化，适配不同屏幕 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            color: #24292e;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            background-color: #f6f8fa;
+        }
+        h2 {
+            color: #0366d6;
+            margin-bottom: 1rem;
+        }
+        ul {
+            margin-left: 2rem;
+            margin-top: 0.5rem;
+        }
+        li {
+            margin: 0.5rem 0;
+        }
+        code {
+            background-color: #eaecef;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: Consolas, monospace;
+        }
+        .cmd-block {
+            background-color: #24292e;
+            color: #fff;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>GitHub 仓库文件上传操作指引</h1>
+
+    <!-- 网页端上传部分 -->
+    <div class="section">
+        <h2>方式1：网页端直接上传文件</h2>
+        <p>适用于简单文件上传，无需安装 Git 工具</p>
+        <ul>
+            <li>步骤1：打开你的 GitHub 仓库页面（如 <code>https://github.com/你的用户名/仓库名</code>）</li>
+            <li>步骤2：找到并点击页面中的 <code>uploading an existing file</code> 蓝色链接</li>
+            <li>步骤3：拖拽本地文件到上传区域，或点击 <code>choose your files</code> 选择文件</li>
+            <li>步骤4：在页面底部填写提交说明（commit message），点击 <code>Commit changes</code> 完成上传</li>
+        </ul>
+    </div>
+
+    <!-- 命令行上传部分 -->
+    <div class="section">
+        <h2>方式2：命令行（Git）上传文件</h2>
+        <p>适用于本地已有仓库、批量文件上传场景，需先安装 Git</p>
+        <ul>
+            <li>步骤1：打开本地终端/命令提示符，进入本地仓库目录</li>
+            <li>步骤2：关联远程 GitHub 仓库（首次操作）：</li>
+        </ul>
+        <div class="cmd-block">
+            git remote add origin https://github.com/你的用户名/仓库名.git
+        </div>
+        <ul>
+            <li>步骤3：将本地分支命名为 main（适配 GitHub 默认分支）：</li>
+        </ul>
+        <div class="cmd-block">
+            git branch -M main
+        </div>
+        <ul>
+            <li>步骤4：推送本地文件到 GitHub 仓库：</li>
+        </ul>
+        <div class="cmd-block">
+            git push -u origin main
+        </div>
+    </div>
+</body>
+</html>
