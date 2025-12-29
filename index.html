@@ -31,6 +31,13 @@
             .toast.error { @apply bg-red-500; }
             .admin-card { @apply bg-white rounded-xl shadow-lg p-6 mb-6; }
             .touchable { @apply min-h-[44px] flex items-center justify-center; }
+            .admin-table { @apply w-full text-sm text-left text-gray-700; }
+            .admin-table thead { @apply text-xs text-gray-700 uppercase bg-gray-100; }
+            .admin-table th { @apply px-4 py-3; }
+            .admin-table td { @apply px-4 py-3 border-b border-gray-200; }
+            .tab-button { @apply px-4 py-2 rounded-lg transition-colors; }
+            .tab-button.active { @apply bg-primary text-white; }
+            .tab-button.inactive { @apply bg-gray-200 text-gray-700 hover:bg-gray-300; }
         }
     </style>
 
@@ -164,8 +171,145 @@
         </div>
     </div>
 
+    <!-- 管理员界面 -->
+    <div id="adminPage" class="hidden min-h-screen">
+        <!-- 管理员顶部导航 -->
+        <nav class="sticky top-0 bg-dark text-white z-40 shadow-lg">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <i class="fa fa-shield text-xl"></i>
+                    <h1 class="text-xl font-bold">管理后台</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="adminName" class="font-medium">管理员：admin</span>
+                    <button onclick="adminLogout()" class="hover:text-accent transition-colors touchable">
+                        <i class="fa fa-sign-out mr-1"></i>退出管理
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 管理员主内容区 -->
+        <div class="container mx-auto px-4 py-8">
+            <!-- 统计卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="admin-card">
+                    <div class="flex items-center">
+                        <div class="bg-primary/10 p-3 rounded-lg mr-4">
+                            <i class="fa fa-users text-primary text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 text-sm">活跃用户</p>
+                            <p id="activeUsers" class="text-2xl font-bold text-primary">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <div class="flex items-center">
+                        <div class="bg-secondary/10 p-3 rounded-lg mr-4">
+                            <i class="fa fa-sign-in text-secondary text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 text-sm">总登录次数</p>
+                            <p id="totalLogins" class="text-2xl font-bold text-secondary">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <div class="flex items-center">
+                        <div class="bg-accent/10 p-3 rounded-lg mr-4">
+                            <i class="fa fa-clock-o text-accent text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 text-sm">总在线时长</p>
+                            <p id="totalOnlineTime" class="text-2xl font-bold text-accent">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <div class="flex items-center">
+                        <div class="bg-purple-500/10 p-3 rounded-lg mr-4">
+                            <i class="fa fa-bar-chart text-purple-500 text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 text-sm">平均时长/次</p>
+                            <p id="avgSessionTime" class="text-2xl font-bold text-purple-500">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户管理 -->
+            <div class="admin-card mb-6">
+                <h2 class="text-xl font-bold text-primary mb-6">用户账户管理</h2>
+                
+                <div class="overflow-x-auto">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>用户名</th>
+                                <th>手机号</th>
+                                <th>注册时间</th>
+                                <th>最后登录</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userManagementTable">
+                            <!-- 数据通过JS动态填充 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 用户行为分析 -->
+            <div class="admin-card mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-primary">用户行为统计</h2>
+                    <div class="flex space-x-2">
+                        <button id="viewWeekly" class="tab-button active">
+                            <i class="fa fa-calendar-week mr-2"></i>本周统计
+                        </button>
+                        <button id="viewMonthly" class="tab-button inactive">
+                            <i class="fa fa-calendar mr-2"></i>本月统计
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 用户行为表格 -->
+                <div class="overflow-x-auto">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>用户</th>
+                                <th>手机号</th>
+                                <th>总登录次数</th>
+                                <th>总在线时长</th>
+                                <th>平均时长/次</th>
+                                <th id="periodLoginsHeader">本周登录</th>
+                                <th id="periodAvgTimeHeader">本周平均时长</th>
+                                <th>当前状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userBehaviorTable">
+                            <!-- 数据通过JS动态填充 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 周统计图表 -->
+            <div class="admin-card">
+                <h3 class="text-lg font-medium mb-4">本周活跃用户趋势</h3>
+                <div class="h-64">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 普通用户主页面 -->
-    <div id="mainPage" class="hidden min-h-screen">
+    <div id="mainPage" class="hidden">
         <!-- 顶部横幅 -->
         <header class="relative h-[40vh] min-h-[300px] bg-center bg-cover" style="background-image: url('https://images.unsplash.com/photo-1559827260-dc66d52bef19?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80&sat=-30');">
             <div class="absolute inset-0 bg-gradient-to-t from-dark/70 to-dark/30 flex flex-col items-center justify-center text-white w-full">
@@ -362,14 +506,6 @@
                     </div>
                 </div>
 
-                <!-- 数据可视化 -->
-                <div class="bg-white rounded-xl shadow-lg p-6 mb-6 max-w-4xl mx-auto">
-                    <h3 class="text-lg font-medium mb-4 text-primary flex items-center">
-                        <i class="fa fa-chart-line mr-2"></i>生态数据趋势
-                    </h3>
-                    <canvas id="ecologicalChart" width="400" height="200"></canvas>
-                </div>
-
                 <!-- 数据面板 -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
                     <!-- 生态数据 -->
@@ -400,6 +536,52 @@
         </footer>
     </div>
 
+    <!-- 修改密码模态框 -->
+    <div id="changePasswordModal" class="fixed inset-0 bg-dark/70 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl w-full max-w-md login-shadow overflow-hidden">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-primary mb-4">修改用户密码</h3>
+                <div id="changePasswordUserInfo" class="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <!-- 用户信息动态填充 -->
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-1">新密码</label>
+                        <input type="password" id="newPassword" placeholder="至少8位密码"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                    </div>
+                    <div>
+                        <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">确认密码</label>
+                        <input type="password" id="confirmPassword" placeholder="再次输入新密码"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                    </div>
+                    <div id="passwordChangeError" class="hidden text-red-500 text-sm text-center mt-1 py-2 bg-red-50 rounded-lg"></div>
+                    <div class="flex gap-3">
+                        <button onclick="confirmChangePassword()" class="flex-1 bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors">确认修改</button>
+                        <button onclick="closeChangePasswordModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors">取消</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除确认模态框 -->
+    <div id="deleteUserModal" class="fixed inset-0 bg-dark/70 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl w-full max-w-md login-shadow overflow-hidden">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-red-600 mb-4">删除用户</h3>
+                <div id="deleteUserInfo" class="mb-6 p-3 bg-red-50 rounded-lg text-red-700">
+                    <!-- 用户信息动态填充 -->
+                </div>
+                <p class="mb-4 text-gray-600">此操作将永久删除该用户及其所有数据（会话记录、问答记录、收藏）。确定要继续吗？</p>
+                <div class="flex gap-3">
+                    <button onclick="confirmDeleteUser()" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">确认删除</button>
+                    <button onclick="closeDeleteUserModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 提示框 -->
     <div id="toast" class="toast"></div>
 
@@ -415,13 +597,19 @@
         
         // ========== 全局变量 ==========
         let currentUser = null;
-        let ecologicalChart = null;
+        let isAdminMode = false;
         let dataCache = { ecological: null, species: null, collections: null };
+        let currentEditingUserId = null;
+        let currentDeletingUserId = null;
+        let currentDeletingUserInfo = null;
+        let userCharts = {};
+        let currentViewMode = 'weekly';
         
         // ========== DOM缓存 ==========
         const DOM = {
             authPage: document.getElementById('authPage'),
             mainPage: document.getElementById('mainPage'),
+            adminPage: document.getElementById('adminPage'),
             loginTab: document.getElementById('loginTab'),
             registerTab: document.getElementById('registerTab'),
             loginForm: document.getElementById('loginForm'),
@@ -429,10 +617,30 @@
             loginBtn: document.getElementById('loginBtn'),
             regBtn: document.getElementById('regBtn'),
             userName: document.getElementById('userName'),
+            adminName: document.getElementById('adminName'),
             chatBox: document.getElementById('chatBox'),
             questionInput: document.getElementById('questionInput'),
             collectionBox: document.getElementById('collectionBox'),
-            toast: document.getElementById('toast')
+            toast: document.getElementById('toast'),
+            // 管理员统计
+            activeUsers: document.getElementById('activeUsers'),
+            totalLogins: document.getElementById('totalLogins'),
+            totalOnlineTime: document.getElementById('totalOnlineTime'),
+            avgSessionTime: document.getElementById('avgSessionTime'),
+            // 管理员表格
+            userManagementTable: document.getElementById('userManagementTable'),
+            userBehaviorTable: document.getElementById('userBehaviorTable'),
+            periodLoginsHeader: document.getElementById('periodLoginsHeader'),
+            periodAvgTimeHeader: document.getElementById('periodAvgTimeHeader'),
+            // 图表
+            weeklyChart: document.getElementById('weeklyChart'),
+            // 视图切换
+            viewWeekly: document.getElementById('viewWeekly'),
+            viewMonthly: document.getElementById('viewMonthly'),
+            // 用户数据
+            statsEcological: document.getElementById('statsEcological'),
+            statsSpecies: document.getElementById('statsSpecies'),
+            statsQA: document.getElementById('statsQA')
         };
 
         // ========== 工具函数 ==========
@@ -458,6 +666,28 @@
                 hour: '2-digit',
                 minute: '2-digit'
             });
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN');
+        }
+
+        function formatTimeShort(seconds) {
+            if (!seconds || seconds < 0) return '0秒';
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            if (hours > 0) {
+                return `${hours}时${minutes}分`;
+            } else if (minutes > 0) {
+                return `${minutes}分${secs}秒`;
+            } else {
+                return `${secs}秒`;
+            }
         }
 
         // ========== 登录注册相关 ==========
@@ -491,7 +721,8 @@
             // 管理员登录
             if (phone === ADMIN_PHONE && password === ADMIN_PASSWORD) {
                 currentUser = { id: 'admin', phone: ADMIN_PHONE, name: '管理员', is_admin: true };
-                showMainApp();
+                isAdminMode = true;
+                showAdminApp();
                 showToast('管理员登录成功');
                 return;
             }
@@ -512,8 +743,17 @@
                 }
                 
                 currentUser = data;
+                isAdminMode = false;
                 showMainApp();
                 showToast('登录成功');
+                
+                // 记录登录会话
+                await supabase
+                    .from('user_sessions')
+                    .insert({
+                        user_id: currentUser.id,
+                        login_time: new Date().toISOString()
+                    });
                 
             } catch (err) {
                 showToast(`登录失败: ${err.message}`, 'error');
@@ -528,6 +768,11 @@
             
             if (!/^1[3-9]\d{9}$/.test(phone)) {
                 showToast('请输入有效的手机号', 'error');
+                return;
+            }
+            
+            if (password.length < 8) {
+                showToast('密码至少需要8位', 'error');
                 return;
             }
             
@@ -577,11 +822,31 @@
         }
 
         function logout() {
+            if (currentUser && !isAdminMode) {
+                // 更新会话记录
+                supabase
+                    .from('user_sessions')
+                    .update({
+                        logout_time: new Date().toISOString()
+                    })
+                    .eq('user_id', currentUser.id)
+                    .is('logout_time', null);
+            }
+            
             currentUser = null;
+            isAdminMode = false;
             dataCache = { ecological: null, species: null, collections: null };
             DOM.authPage.classList.remove('hidden');
             DOM.mainPage.classList.add('hidden');
             showToast('已退出登录');
+        }
+
+        function adminLogout() {
+            currentUser = null;
+            isAdminMode = false;
+            DOM.adminPage.classList.add('hidden');
+            DOM.authPage.classList.remove('hidden');
+            showToast('已退出管理员模式');
         }
 
         // ========== 主应用显示 ==========
@@ -590,97 +855,45 @@
             DOM.mainPage.classList.remove('hidden');
             DOM.userName.textContent = `欢迎，${currentUser.name}`;
             
-            // 管理员不显示收藏功能
-            if (currentUser.is_admin) {
-                document.getElementById('collection').classList.add('hidden');
-            } else {
-                document.getElementById('collection').classList.remove('hidden');
-            }
-            
             // 加载所有数据
             await Promise.all([
                 loadStats(),
                 loadEcologicalData(),
                 loadSpeciesData(),
-                currentUser.is_admin ? Promise.resolve() : loadCollections(),
-                loadChartData(),
+                loadCollections(),
                 loadQAHistory()
             ]);
-            
-            // 初始化图表
-            initChart();
         }
 
-        // ========== 加载统计数据 ==========
+        async function showAdminApp() {
+            DOM.authPage.classList.add('hidden');
+            DOM.adminPage.classList.remove('hidden');
+            DOM.adminName.textContent = `管理员：${currentUser.name}`;
+            
+            // 加载管理员数据
+            await Promise.all([
+                loadAdminStats(),
+                loadUserManagementTable(),
+                loadUserBehaviorTable(),
+                loadWeeklyChart()
+            ]);
+        }
+
+        // ========== 普通用户功能 ==========
         async function loadStats() {
             try {
                 const { count: ecoCount } = await supabase.from('ecological_data').select('*', { count: 'exact', head: true });
                 const { count: speciesCount } = await supabase.from('species_records').select('*', { count: 'exact', head: true });
                 const { count: qaCount } = await supabase.from('qa_logs').select('*', { count: 'exact', head: true });
                 
-                document.getElementById('statsEcological').textContent = ecoCount;
-                document.getElementById('statsSpecies').textContent = speciesCount;
-                document.getElementById('statsQA').textContent = qaCount;
+                if (DOM.statsEcological) DOM.statsEcological.textContent = ecoCount;
+                if (DOM.statsSpecies) DOM.statsSpecies.textContent = speciesCount;
+                if (DOM.statsQA) DOM.statsQA.textContent = qaCount;
             } catch (error) {
                 console.error('加载统计数据失败:', error);
             }
         }
 
-        // ========== 图表相关 ==========
-        function initChart() {
-            const ctx = document.getElementById('ecologicalChart').getContext('2d');
-            ecologicalChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: '植被覆盖度 (%)',
-                        data: [],
-                        borderColor: '#0E7C7B',
-                        backgroundColor: 'rgba(14, 124, 123, 0.1)',
-                        tension: 0.4
-                    }, {
-                        label: '水质PH值',
-                        data: [],
-                        borderColor: '#41C9E2',
-                        backgroundColor: 'rgba(65, 201, 226, 0.1)',
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: true, position: 'top' } },
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
-        }
-
-        async function loadChartData() {
-            try {
-                const { data, error } = await supabase
-                    .from('ecological_data')
-                    .select('record_date, data_type, value')
-                    .order('record_date', { ascending: true })
-                    .limit(30);
-                
-                if (error) throw error;
-                
-                const dates = [...new Set(data.map(item => item.record_date))];
-                const vegetationData = data.filter(item => item.data_type === '植被覆盖度').map(item => item.value);
-                const phData = data.filter(item => item.data_type === '水质PH值').map(item => item.value);
-                
-                if (ecologicalChart) {
-                    ecologicalChart.data.labels = dates;
-                    ecologicalChart.data.datasets[0].data = vegetationData;
-                    ecologicalChart.data.datasets[1].data = phData;
-                    ecologicalChart.update();
-                }
-            } catch (error) {
-                console.error('加载图表数据失败:', error);
-            }
-        }
-
-        // ========== 加载生态数据 ==========
         async function loadEcologicalData() {
             if (dataCache.ecological) {
                 renderEcologicalData(dataCache.ecological);
@@ -700,7 +913,8 @@
                 renderEcologicalData(data);
             } catch (error) {
                 console.error('加载生态数据失败:', error);
-                document.getElementById('ecologicalDataList').innerHTML = `<p class="text-red-500 text-center">加载失败</p>`;
+                const div = document.getElementById('ecologicalDataList');
+                if (div) div.innerHTML = `<p class="text-red-500 text-center">加载失败</p>`;
             }
         }
         
@@ -732,7 +946,6 @@
             `).join('');
         }
 
-        // ========== 加载物种数据 ==========
         async function loadSpeciesData() {
             if (dataCache.species) {
                 renderSpeciesData(dataCache.species);
@@ -752,7 +965,8 @@
                 renderSpeciesData(data);
             } catch (error) {
                 console.error('加载物种数据失败:', error);
-                document.getElementById('speciesDataList').innerHTML = `<p class="text-red-500 text-center">加载失败</p>`;
+                const div = document.getElementById('speciesDataList');
+                if (div) div.innerHTML = `<p class="text-red-500 text-center">加载失败</p>`;
             }
         }
         
@@ -784,7 +998,6 @@
             `).join('');
         }
 
-        // ========== 智能问答 ==========
         function fillQuestion(question) {
             if (DOM.questionInput) {
                 DOM.questionInput.value = question;
@@ -794,7 +1007,6 @@
 
         // 模拟AI回答
         async function getAIAnswer(question) {
-            // 模拟网络延迟
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             const knowledgeBase = {
@@ -809,14 +1021,12 @@
             
             const questionLower = question.toLowerCase();
             
-            // 关键词匹配
             for (const [key, answer] of Object.entries(knowledgeBase)) {
                 if (questionLower.includes(key.toLowerCase())) {
                     return answer;
                 }
             }
             
-            // 默认回答
             return '三江源位于青海省南部，是长江、黄河、澜沧江的发源地，被称为"中华水塔"，是中国重要的生态安全屏障。';
         }
 
@@ -860,14 +1070,12 @@
                 DOM.chatBox.scrollTop = DOM.chatBox.scrollHeight;
                 
                 // 保存问答记录
-                if (!currentUser.is_admin) {
-                    await supabase.from('qa_logs').insert({
-                        user_id: currentUser.id,
-                        question: question,
-                        answer: answer,
-                        created_at: new Date().toISOString()
-                    });
-                }
+                await supabase.from('qa_logs').insert({
+                    user_id: currentUser.id,
+                    question: question,
+                    answer: answer,
+                    created_at: new Date().toISOString()
+                });
                 
                 // 更新统计
                 loadStats();
@@ -921,7 +1129,7 @@
                 .from('collections')
                 .select('id')
                 .eq('user_id', currentUser.id)
-                .eq('title', decodedQuestion.substring(0, 50))
+                .eq('question', decodedQuestion)
                 .single();
             
             if (existing) {
@@ -933,9 +1141,8 @@
                 // 添加收藏
                 await supabase.from('collections').insert({
                     user_id: currentUser.id,
-                    type: '问答',
-                    title: decodedQuestion.substring(0, 50),
-                    content: decodedAnswer,
+                    question: decodedQuestion,
+                    answer: decodedAnswer,
                     created_at: new Date().toISOString()
                 });
                 el.classList.add('active');
@@ -982,8 +1189,8 @@
             
             div.innerHTML = data.map(item => `
                 <div class="p-3 border-b border-gray-100 last:border-0">
-                    <div class="font-medium text-primary">${item.title}</div>
-                    <div class="mt-1 text-gray-600 text-sm">${item.content}</div>
+                    <div class="font-medium text-primary">${item.question.substring(0, 50)}${item.question.length > 50 ? '...' : ''}</div>
+                    <div class="mt-1 text-gray-600 text-sm">${item.answer.substring(0, 100)}${item.answer.length > 100 ? '...' : ''}</div>
                     <button class="mt-2 text-xs text-red-500" onclick="deleteCollect('${item.id}')">删除</button>
                 </div>
             `).join('');
@@ -1028,25 +1235,423 @@
                     DOM.chatBox.insertAdjacentHTML('beforeend', userHtml);
                     
                     // 检查是否已收藏
-                    const { data: existing } = supabase
+                    supabase
                         .from('collections')
                         .select('id')
                         .eq('user_id', currentUser.id)
-                        .eq('title', item.question.substring(0, 50))
-                        .single();
-                    
-                    const collectClass = existing ? 'collect-btn active' : 'collect-btn';
-                    const safeQuestion = item.question.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                    const safeAnswer = item.answer.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                    
-                    const answerHtml = `<div class="qa-item-bot"><div class="qa-content-bot"><div class="text-sm text-gray-500">智能助手 ${time}</div><div class="mt-1">${item.answer}</div><i class="fa fa-star ${collectClass}" onclick="toggleCollect(this,'${safeQuestion}','${safeAnswer}')"></i></div></div>`;
-                    DOM.chatBox.insertAdjacentHTML('beforeend', answerHtml);
+                        .eq('question', item.question)
+                        .single()
+                        .then(({ data: existing }) => {
+                            const collectClass = existing ? 'collect-btn active' : 'collect-btn';
+                            const safeQuestion = item.question.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                            const safeAnswer = item.answer.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                            
+                            const answerHtml = `<div class="qa-item-bot"><div class="qa-content-bot"><div class="text-sm text-gray-500">智能助手 ${time}</div><div class="mt-1">${item.answer}</div><i class="fa fa-star ${collectClass}" onclick="toggleCollect(this,'${safeQuestion}','${safeAnswer}')"></i></div></div>`;
+                            DOM.chatBox.insertAdjacentHTML('beforeend', answerHtml);
+                            DOM.chatBox.scrollTop = DOM.chatBox.scrollHeight;
+                        });
                 });
-                
-                DOM.chatBox.scrollTop = DOM.chatBox.scrollHeight;
                 
             } catch (error) {
                 console.error('加载问答历史失败:', error);
+            }
+        }
+
+        // ========== 管理员功能 ==========
+        async function loadAdminStats() {
+            try {
+                // 使用视图获取管理员统计
+                const { data, error } = await supabase
+                    .from('admin_stats')
+                    .select('*')
+                    .single();
+                
+                if (error) throw error;
+                
+                if (DOM.activeUsers) DOM.activeUsers.textContent = data.active_users_30d || 0;
+                if (DOM.totalLogins) DOM.totalLogins.textContent = data.total_logins || 0;
+                if (DOM.totalOnlineTime) DOM.totalOnlineTime.textContent = formatTimeShort(data.total_duration || 0);
+                if (DOM.avgSessionTime) DOM.avgSessionTime.textContent = formatTimeShort(data.avg_session_duration || 0);
+                
+            } catch (error) {
+                console.error('加载管理员统计失败:', error);
+                showToast('加载统计失败', 'error');
+            }
+        }
+
+        // 加载用户管理表格
+        async function loadUserManagementTable() {
+            if (!DOM.userManagementTable) return;
+            
+            try {
+                const { data: users, error } = await supabase
+                    .from('users')
+                    .select('id, phone, name, is_admin, created_at')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                const table = DOM.userManagementTable;
+                table.innerHTML = '';
+                
+                // 排除管理员自己
+                const filteredUsers = users.filter(user => 
+                    user.phone !== ADMIN_PHONE && !user.is_admin
+                );
+                
+                if (filteredUsers.length === 0) {
+                    table.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                <i class="fa fa-users text-2xl mb-2 block"></i>
+                                <p>暂无普通用户</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                for (const user of filteredUsers) {
+                    const row = document.createElement('tr');
+                    const createdAt = formatDate(user.created_at);
+                    
+                    // 获取最后登录时间
+                    const { data: lastSession } = await supabase
+                        .from('user_sessions')
+                        .select('login_time')
+                        .eq('user_id', user.id)
+                        .order('login_time', { ascending: false })
+                        .limit(1)
+                        .single();
+                    
+                    const lastLogin = lastSession ? new Date(lastSession.login_time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '从未登录';
+                    
+                    // 检查是否在线
+                    const { data: activeSession } = await supabase
+                        .from('user_sessions')
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .is('logout_time', null)
+                        .limit(1)
+                        .single();
+                    
+                    const status = activeSession ? 
+                        '<span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">在线</span>' : 
+                        '<span class="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">离线</span>';
+                    
+                    row.innerHTML = `
+                        <td class="font-medium">${user.name}</td>
+                        <td class="font-mono text-sm">${user.phone}</td>
+                        <td class="text-sm">${createdAt}</td>
+                        <td class="text-sm">${lastLogin}</td>
+                        <td>${status}</td>
+                        <td>
+                            <div class="flex gap-2">
+                                <button onclick="showChangePasswordModal('${user.id}', '${user.name}', '${user.phone}')" 
+                                        class="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600 transition-colors">
+                                    改密码
+                                </button>
+                                <button onclick="showDeleteUserModal('${user.id}', '${user.name}', '${user.phone}')" 
+                                        class="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors">
+                                    删除
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    table.appendChild(row);
+                }
+                
+            } catch (error) {
+                console.error('加载用户管理表格失败:', error);
+                table.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-4 py-8 text-center text-red-500">
+                            <i class="fa fa-exclamation-triangle text-2xl mb-2 block"></i>
+                            <p>加载失败</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // 加载用户行为表格
+        async function loadUserBehaviorTable() {
+            if (!DOM.userBehaviorTable) return;
+            
+            try {
+                // 使用视图获取用户行为统计
+                const { data: users, error } = await supabase
+                    .from('user_behavior_stats')
+                    .select('*')
+                    .eq('is_admin', false)
+                    .order('total_logins', { ascending: false });
+                
+                if (error) throw error;
+                
+                const table = DOM.userBehaviorTable;
+                table.innerHTML = '';
+                
+                if (!users || users.length === 0) {
+                    table.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                                <i class="fa fa-users text-2xl mb-2 block"></i>
+                                <p>暂无用户数据</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                users.forEach(user => {
+                    // 根据当前视图模式选择显示的数据
+                    let periodLogins, periodAvgTime;
+                    if (currentViewMode === 'weekly') {
+                        periodLogins = user.weekly_logins;
+                        periodAvgTime = formatTimeShort(user.weekly_avg_duration);
+                    } else {
+                        periodLogins = user.monthly_logins;
+                        periodAvgTime = formatTimeShort(user.monthly_avg_duration);
+                    }
+                    
+                    const status = user.is_online ? 
+                        '<span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">在线</span>' : 
+                        '<span class="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">离线</span>';
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="font-medium">${user.name}</td>
+                        <td class="font-mono text-sm">${user.phone}</td>
+                        <td class="text-center">${user.total_logins}</td>
+                        <td class="font-mono">${formatTimeShort(user.total_duration)}</td>
+                        <td class="font-mono">${formatTimeShort(user.avg_duration)}</td>
+                        <td class="text-center">${periodLogins}</td>
+                        <td class="font-mono">${periodAvgTime}</td>
+                        <td>${status}</td>
+                    `;
+                    table.appendChild(row);
+                });
+                
+            } catch (error) {
+                console.error('加载用户行为表格失败:', error);
+            }
+        }
+
+        // 视图切换
+        function switchAdminView(mode) {
+            currentViewMode = mode;
+            
+            // 更新按钮状态
+            if (DOM.viewWeekly && DOM.viewMonthly) {
+                if (mode === 'weekly') {
+                    DOM.viewWeekly.classList.remove('inactive');
+                    DOM.viewWeekly.classList.add('active');
+                    DOM.viewMonthly.classList.remove('active');
+                    DOM.viewMonthly.classList.add('inactive');
+                    
+                    if (DOM.periodLoginsHeader) DOM.periodLoginsHeader.textContent = '本周登录';
+                    if (DOM.periodAvgTimeHeader) DOM.periodAvgTimeHeader.textContent = '本周平均时长';
+                } else {
+                    DOM.viewMonthly.classList.remove('inactive');
+                    DOM.viewMonthly.classList.add('active');
+                    DOM.viewWeekly.classList.remove('active');
+                    DOM.viewWeekly.classList.add('inactive');
+                    
+                    if (DOM.periodLoginsHeader) DOM.periodLoginsHeader.textContent = '本月登录';
+                    if (DOM.periodAvgTimeHeader) DOM.periodAvgTimeHeader.textContent = '本月平均时长';
+                }
+            }
+            
+            loadUserBehaviorTable();
+        }
+
+        // 加载周统计图表
+        async function loadWeeklyChart() {
+            const ctx = DOM.weeklyChart?.getContext('2d');
+            if (!ctx) return;
+            
+            try {
+                // 获取周活跃数据
+                const { data, error } = await supabase
+                    .from('weekly_activity')
+                    .select('*')
+                    .order('activity_date', { ascending: true });
+                
+                if (error) throw error;
+                
+                // 准备图表数据
+                const labels = data.map(item => item.day_of_week);
+                const activeUsers = data.map(item => item.active_users);
+                
+                // 销毁旧图表
+                if (userCharts.weeklyChart) {
+                    userCharts.weeklyChart.destroy();
+                }
+                
+                userCharts.weeklyChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '活跃用户数',
+                            data: activeUsers,
+                            backgroundColor: '#0E7C7B',
+                            borderColor: '#0E7C7B',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1,
+                                    precision: 0
+                                },
+                                title: {
+                                    display: true,
+                                    text: '用户数'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '星期'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('加载周统计图表失败:', error);
+            }
+        }
+
+        // ========== 用户管理功能 ==========
+        function showChangePasswordModal(userId, userName, userPhone) {
+            currentEditingUserId = userId;
+            
+            const userInfoDiv = document.getElementById('changePasswordUserInfo');
+            userInfoDiv.innerHTML = `
+                <div class="flex items-center">
+                    <div class="bg-primary/10 p-2 rounded-lg mr-3">
+                        <i class="fa fa-user text-primary"></i>
+                    </div>
+                    <div>
+                        <p class="font-medium">${userName}</p>
+                        <p class="text-sm text-gray-600">手机号: ${userPhone}</p>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            const errorDiv = document.getElementById('passwordChangeError');
+            errorDiv.classList.add('hidden');
+            errorDiv.textContent = '';
+            
+            document.getElementById('changePasswordModal').classList.remove('hidden');
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('changePasswordModal').classList.add('hidden');
+            currentEditingUserId = null;
+        }
+
+        async function confirmChangePassword() {
+            const newPassword = document.getElementById('newPassword').value.trim();
+            const confirmPassword = document.getElementById('confirmPassword').value.trim();
+            const errorDiv = document.getElementById('passwordChangeError');
+            
+            // 验证
+            if (newPassword.length < 8) {
+                errorDiv.textContent = '密码至少需要8位';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                errorDiv.textContent = '两次输入的密码不一致';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('users')
+                    .update({ password_hash: newPassword })
+                    .eq('id', currentEditingUserId);
+                
+                if (error) throw error;
+                
+                showToast('密码修改成功');
+                closeChangePasswordModal();
+                
+            } catch (error) {
+                console.error('修改密码失败:', error);
+                errorDiv.textContent = '修改失败: ' + error.message;
+                errorDiv.classList.remove('hidden');
+            }
+        }
+
+        function showDeleteUserModal(userId, userName, userPhone) {
+            currentDeletingUserId = userId;
+            currentDeletingUserInfo = { name: userName, phone: userPhone };
+            
+            const userInfoDiv = document.getElementById('deleteUserInfo');
+            userInfoDiv.innerHTML = `
+                <div class="flex items-center">
+                    <div class="bg-red-100 p-2 rounded-lg mr-3">
+                        <i class="fa fa-exclamation-triangle text-red-600"></i>
+                    </div>
+                    <div>
+                        <p class="font-medium">${userName}</p>
+                        <p class="text-sm">手机号: ${userPhone}</p>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('deleteUserModal').classList.remove('hidden');
+        }
+
+        function closeDeleteUserModal() {
+            document.getElementById('deleteUserModal').classList.add('hidden');
+            currentDeletingUserId = null;
+            currentDeletingUserInfo = null;
+        }
+
+        async function confirmDeleteUser() {
+            if (!currentDeletingUserId || !currentDeletingUserInfo) return;
+            
+            try {
+                // 删除用户（数据库设置了级联删除，会自动删除相关记录）
+                const { error } = await supabase
+                    .from('users')
+                    .delete()
+                    .eq('id', currentDeletingUserId);
+                
+                if (error) throw error;
+                
+                showToast(`用户 ${currentDeletingUserInfo.name} 已删除`);
+                closeDeleteUserModal();
+                
+                // 重新加载表格
+                await loadUserManagementTable();
+                await loadUserBehaviorTable();
+                await loadAdminStats();
+                
+            } catch (error) {
+                console.error('删除用户失败:', error);
+                showToast('删除失败: ' + error.message, 'error');
             }
         }
 
@@ -1071,12 +1676,23 @@
                 if (e.key === 'Enter') askQuestion();
             });
             
+            // 管理员视图切换
+            DOM.viewWeekly?.addEventListener('click', () => switchAdminView('weekly'));
+            DOM.viewMonthly?.addEventListener('click', () => switchAdminView('monthly'));
+            
             // 检查是否已登录（可以从localStorage恢复）
             const savedUser = localStorage.getItem('currentUser');
             if (savedUser) {
                 try {
-                    currentUser = JSON.parse(savedUser);
-                    await showMainApp();
+                    const userData = JSON.parse(savedUser);
+                    currentUser = userData.user;
+                    isAdminMode = userData.isAdminMode || false;
+                    
+                    if (isAdminMode) {
+                        await showAdminApp();
+                    } else {
+                        await showMainApp();
+                    }
                 } catch (error) {
                     console.error('恢复用户登录状态失败:', error);
                     localStorage.removeItem('currentUser');
@@ -1086,7 +1702,10 @@
             // 页面卸载时保存登录状态
             window.addEventListener('beforeunload', function() {
                 if (currentUser) {
-                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    localStorage.setItem('currentUser', JSON.stringify({
+                        user: currentUser,
+                        isAdminMode: isAdminMode
+                    }));
                 }
             });
         }
