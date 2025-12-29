@@ -1,45 +1,480 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>注册测试</title>
-    <style>
-        body { font-family: Arial; padding: 50px; }
-        .input { width: 100%; padding: 10px; margin: 10px 0; }
-        .btn { padding: 10px 20px; background: green; color: white; border: none; cursor: pointer; }
-        .error { color: red; }
-        .success { color: green; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三江源生态智能问答平台</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0E7C7B',
+                        secondary: '#41C9E2',
+                        accent: '#A0D8B3',
+                        dark: '#2C3E50',
+                    }
+                }
+            }
+        }
+    </script>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
 </head>
-<body>
-    <h1>注册测试（无RLS）</h1>
-    <input type="text" id="phone" class="input" placeholder="手机号: 13812345678">
-    <input type="text" id="name" class="input" placeholder="用户名: 测试用户">
-    <input type="password" id="pwd" class="input" placeholder="密码: 12345678">
-    <button class="btn" onclick="register()">注册</button>
-    <div id="msg"></div>
+<body class="bg-gradient-to-br from-blue-50 via-cyan-50 to-green-50 text-dark min-h-screen">
     
-    <script>
-        const supabase = window.supabase.createClient(
-            'https://pnakeholshmrtwctzqcb.supabase.co',
-            'sb_publishable_tVf76wqdUIvhiNUymxKHEA_FAMmDvf3'
-        );
-        
-        async function register() {
-            const phone = document.getElementById('phone').value;
-            const name = document.getElementById('name').value;
-            const pwd = document.getElementById('pwd').value;
+    <!-- 认证页面 -->
+    <div id="authPage" class="min-h-screen flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
+            <h1 class="text-3xl font-bold text-center text-primary mb-8">三江源生态智能问答平台</h1>
             
-            const { data, error } = await supabase.from('users').insert({
-                phone, name, password_hash: pwd, is_admin: false
-            }).select().single();
+            <div class="flex mb-6">
+                <button id="loginTab" class="flex-1 py-2 font-semibold border-b-2 border-primary text-primary" onclick="switchTab('login')">登录</button>
+                <button id="registerTab" class="flex-1 py-2 font-semibold border-b-2 border-gray-200 text-gray-500" onclick="switchTab('register')">注册</button>
+            </div>
+            
+            <!-- 登录表单 -->
+            <div id="loginForm">
+                <h2 class="text-xl font-bold text-center mb-4">用户登录</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">手机号</label>
+                    <input type="tel" id="loginPhone" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入11位手机号">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-2">密码</label>
+                    <input type="password" id="loginPwd" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入密码（≥8位）">
+                </div>
+                <button onclick="loginUser()" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90 transition">登录</button>
+                <p class="mt-4 text-center text-sm text-gray-500">管理员：18597123311 / Hm123321</p>
+            </div>
+            
+            <!-- 注册表单 -->
+            <div id="registerForm" class="hidden">
+                <h2 class="text-xl font-bold text-center mb-4">用户注册</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">手机号</label>
+                    <input type="tel" id="regPhone" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入11位手机号">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">用户名</label>
+                    <input type="text" id="regName" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入用户名">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">密码</label>
+                    <input type="password" id="regPwd" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入密码（≥8位）">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-2">确认密码</label>
+                    <input type="password" id="regConfirmPwd" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请再次输入密码">
+                </div>
+                <button onclick="registerUser()" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90 transition">注册</button>
+            </div>
+            
+            <div id="authMessage" class="mt-4 text-center"></div>
+        </div>
+    </div>
+
+    <!-- 主应用页面 -->
+    <div id="mainPage" class="hidden min-h-screen p-4">
+        <div class="max-w-6xl mx-auto">
+            <!-- 顶部导航 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold text-primary">三江源生态智能问答平台</h1>
+                    <div class="flex items-center gap-4">
+                        <span id="userNameDisplay" class="text-lg font-medium"></span>
+                        <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">退出</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据面板 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- 生态数据 -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <h2 class="text-xl font-bold text-primary mb-4">生态监测数据</h2>
+                    <div id="ecologicalDataList" class="space-y-4"></div>
+                </div>
+
+                <!-- 物种记录 -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <h2 class="text-xl font-bold text-primary mb-4">物种记录</h2>
+                    <div id="speciesDataList" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- 智能问答 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                <h2 class="text-xl font-bold text-primary mb-4">智能问答</h2>
+                <textarea id="questionInput" class="w-full h-32 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入关于三江源生态的问题..."></textarea>
+                <button onclick="askQuestion()" class="mt-4 bg-primary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition">提问</button>
+                <div id="qaHistory" class="mt-6 space-y-4"></div>
+            </div>
+
+            <!-- 收藏管理 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h2 class="text-xl font-bold text-primary mb-4">我的收藏</h2>
+                <div id="collectionsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== Supabase配置 ==========
+        const SUPABASE_URL = 'https://pnakeholshmrtwctzqcb.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_tVf76wqdUIvhiNUymxKHEA_FAMmDvf3';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let currentUser = null;
+        let currentSession = null;
+
+        // ========== 标签切换 ==========
+        function switchTab(tab) {
+            const loginTab = document.getElementById('loginTab');
+            const registerTab = document.getElementById('registerTab');
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            
+            if (tab === 'login') {
+                loginTab.classList.add('border-primary', 'text-primary');
+                loginTab.classList.remove('border-gray-200', 'text-gray-500');
+                registerTab.classList.remove('border-primary', 'text-primary');
+                registerTab.classList.add('border-gray-200', 'text-gray-500');
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+            } else {
+                registerTab.classList.add('border-primary', 'text-primary');
+                registerTab.classList.remove('border-gray-200', 'text-gray-500');
+                loginTab.classList.remove('border-primary', 'text-primary');
+                loginTab.classList.add('border-gray-200', 'text-gray-500');
+                registerForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+            }
+        }
+
+        // ========== 登录 ==========
+        async function loginUser() {
+            const phone = document.getElementById('loginPhone').value.trim();
+            const password = document.getElementById('loginPwd').value.trim();
+            const messageDiv = document.getElementById('authMessage');
+            
+            // 管理员登录
+            if (phone === '18597123311' && password === 'Hm123321') {
+                currentUser = { id: 'admin', phone: '18597123311', name: '管理员', is_admin: true };
+                currentSession = { id: 'session-admin', user_id: 'admin' };
+                showMainApp();
+                return;
+            }
+            
+            // 普通用户登录（直接查询users表，无RLS）
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('phone', phone)
+                    .eq('password_hash', password)
+                    .single();
+                
+                if (error || !data) {
+                    messageDiv.innerHTML = '<p class="text-red text-center">手机号或密码错误</p>';
+                    return;
+                }
+                
+                currentUser = data;
+                
+                // 创建会话记录
+                const { data: sessionData } = await supabase
+                    .from('user_sessions')
+                    .insert({
+                        user_id: data.id,
+                        login_time: new Date().toISOString(),
+                        ip_address: await getClientIP(),
+                        user_agent: navigator.userAgent
+                    })
+                    .select()
+                    .single();
+                
+                currentSession = sessionData;
+                showMainApp();
+                messageDiv.innerHTML = '<p class="text-green text-center">登录成功！</p>';
+                
+            } catch (err) {
+                messageDiv.innerHTML = `<p class="text-red text-center">登录失败: ${err.message}</p>`;
+            }
+        }
+
+        // ========== 注册 ==========
+        async function registerUser() {
+            const phone = document.getElementById('regPhone').value.trim();
+            const name = document.getElementById('regName').value.trim();
+            const password = document.getElementById('regPwd').value.trim();
+            const confirm = document.getElementById('regConfirmPwd').value.trim();
+            const messageDiv = document.getElementById('authMessage');
+            
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                messageDiv.innerHTML = '<p class="text-red text-center">请输入有效的手机号</p>';
+                return;
+            }
+            
+            if (password !== confirm) {
+                messageDiv.innerHTML = '<p class="text-red text-center">两次密码不一致</p>';
+                return;
+            }
+            
+            try {
+                // 检查手机号是否存在
+                const { data: existing } = await supabase
+                    .from('users')
+                    .select('phone')
+                    .eq('phone', phone)
+                    .single();
+                
+                if (existing) {
+                    messageDiv.innerHTML = '<p class="text-red text-center">该手机号已注册</p>';
+                    return;
+                }
+                
+                // 创建用户（无RLS限制）
+                const { data, error } = await supabase
+                    .from('users')
+                    .insert({
+                        phone: phone,
+                        name: name,
+                        password_hash: password,
+                        is_admin: false,
+                        created_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+                
+                if (error) {
+                    messageDiv.innerHTML = `<p class="text-red text-center">注册失败: ${error.message}</p>`;
+                    return;
+                }
+                
+                messageDiv.innerHTML = '<p class="text-green text-center">注册成功！正在跳转登录...</p>';
+                setTimeout(() => {
+                    switchTab('login');
+                    document.getElementById('regPhone').value = '';
+                    document.getElementById('regName').value = '';
+                    document.getElementById('regPwd').value = '';
+                    document.getElementById('regConfirmPwd').value = '';
+                }, 1500);
+                
+            } catch (err) {
+                messageDiv.innerHTML = `<p class="text-red text-center">注册失败: ${err.message}</p>`;
+            }
+        }
+
+        // ========== 显示主应用 ==========
+        async function showMainApp() {
+            document.getElementById('authPage').classList.add('hidden');
+            document.getElementById('mainPage').classList.remove('hidden');
+            document.getElementById('userNameDisplay').textContent = currentUser.name;
+            
+            // 并行加载所有数据
+            await Promise.all([
+                loadEcologicalData(),
+                loadSpeciesData(),
+                loadCollections(),
+                loadUserStats()
+            ]);
+        }
+
+        // ========== 加载生态数据 ==========
+        async function loadEcologicalData() {
+            const { data, error } = await supabase.from('ecological_data').select('*').limit(10);
+            const div = document.getElementById('ecologicalDataList');
             
             if (error) {
-                document.getElementById('msg').innerHTML = `<p class="error">失败: ${error.message}</p>`;
-            } else {
-                document.getElementById('msg').innerHTML = `<p class="success">成功！</p>`;
+                div.innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
+                return;
             }
+            
+            div.innerHTML = data.map(item => `
+                <div class="data-item">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-primary">${item.data_type}</h4>
+                            <p class="text-sm text-gray-600">位置: ${item.location}</p>
+                            <p class="text-sm text-gray-600">数值: ${item.value} ${item.unit}</p>
+                            <p class="text-xs text-gray-400">日期: ${item.record_date}</p>
+                        </div>
+                        ${currentUser ? `<button onclick="collectItem('生态数据', '${item.data_type}', '${item.location}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ========== 加载物种数据 ==========
+        async function loadSpeciesData() {
+            const { data, error } = await supabase.from('species_records').select('*').limit(10);
+            const div = document.getElementById('speciesDataList');
+            
+            if (error) {
+                div.innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
+                return;
+            }
+            
+            div.innerHTML = data.map(item => `
+                <div class="data-item">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-primary">${item.species_name}</h4>
+                            <p class="text-sm text-gray-600">数量: ${item.count}</p>
+                            <p class="text-sm text-gray-600">位置: ${item.location}</p>
+                            <p class="text-xs text-gray-400">日期: ${item.observation_date}</p>
+                        </div>
+                        ${currentUser ? `<button onclick="collectItem('物种', '${item.species_name}', '数量: ${item.count}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ========== 智能问答 ==========
+        async function askQuestion() {
+            const input = document.getElementById('questionInput');
+            const question = input.value.trim();
+            if (!question) return;
+            
+            const answer = getMockAnswer(question);
+            const qaHistory = document.getElementById('qaHistory');
+            
+            // 显示问答
+            const qaItem = document.createElement('div');
+            qaItem.className = 'data-item';
+            qaItem.innerHTML = `
+                <p><strong>问:</strong> ${question}</p>
+                <p><strong>答:</strong> ${answer}</p>
+                <div class="text-right mt-2">
+                    ${currentUser ? `<button onclick="collectQA('${question}', '${answer}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
+                </div>
+            `;
+            qaHistory.insertBefore(qaItem, qaHistory.firstChild);
+            
+            // 保存到qa_logs（如果已登录）
+            if (currentUser) {
+                await supabase.from('qa_logs').insert({
+                    user_id: currentUser.id,
+                    question: question,
+                    answer: answer,
+                    created_at: new Date().toISOString()
+                });
+            }
+            
+            input.value = '';
+        }
+
+        // ========== 收藏功能 ==========
+        async function collectItem(type, title, content) {
+            if (!currentUser) return;
+            
+            try {
+                await supabase.from('collections').insert({
+                    user_id: currentUser.id,
+                    type: type,
+                    title: title,
+                    content: content,
+                    created_at: new Date().toISOString()
+                });
+                
+                alert('收藏成功！');
+                loadCollections();
+            } catch (err) {
+                alert('收藏失败: ' + err.message);
+            }
+        }
+        
+        async function collectQA(question, answer) {
+            await collectItem('问答', question.substring(0, 50) + '...', answer);
+        }
+
+        // ========== 加载收藏 ==========
+        async function loadCollections() {
+            if (!currentUser) return;
+            
+            const { data, error } = await supabase
+                .from('collections')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('created_at', { ascending: false })
+                .limit(20);
+            
+            const div = document.getElementById('collectionsList');
+            
+            if (error) {
+                div.innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
+                return;
+            }
+            
+            if (data.length === 0) {
+                div.innerHTML = '<p class="text-center text-gray-500">暂无收藏</p>';
+                return;
+            }
+            
+            div.innerHTML = data.map(item => `
+                <div class="data-item">
+                    <h4 class="font-bold">${item.title}</h4>
+                    <p class="text-sm text-gray-600">${item.content}</p>
+                    <p class="text-xs text-gray-400 mt-1">${item.created_at}</p>
+                </div>
+            `).join('');
+        }
+
+        // ========== 加载用户统计 ==========
+        async function loadUserStats() {
+            if (!currentUser) return;
+            
+            // 问答数量
+            const { count: qaCount } = await supabase
+                .from('qa_logs')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', currentUser.id);
+            
+            // 收藏数量
+            const { count: collectionCount } = await supabase
+                .from('collections')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', currentUser.id);
+            
+            console.log(`用户统计: ${currentUser.name}, 问答${qaCount}条, 收藏${collectionCount}个`);
+        }
+
+        // ========== 退出 ==========
+        async function logout() {
+            if (currentSession) {
+                await supabase
+                    .from('user_sessions')
+                    .update({ logout_time: new Date().toISOString() })
+                    .eq('id', currentSession.id);
+            }
+            
+            currentUser = null;
+            currentSession = null;
+            document.getElementById('authPage').classList.remove('hidden');
+            document.getElementById('mainPage').classList.add('hidden');
+        }
+
+        // ========== 工具函数 ==========
+        async function getClientIP() {
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                return data.ip || '未知';
+            } catch {
+                return '未知';
+            }
+        }
+
+        function getMockAnswer(question) {
+            const q = question.toLowerCase();
+            if (q.includes('珍稀物种')) return "三江源的珍稀物种包括雪豹、藏羚羊、野牦牛、黑颈鹤等国家一级保护动物16种。";
+            if (q.includes('保护措施')) return "三江源保护措施包括生态修复、退牧还草、生态移民、社区共管等。";
+            if (q.includes('中华水塔')) return "三江源被称为'中华水塔'，是长江、黄河、澜沧江的发源地。";
+            return "三江源位于青海省南部，是长江、黄河、澜沧江的发源地，被称为'中华水塔'。";
         }
     </script>
 </body>
