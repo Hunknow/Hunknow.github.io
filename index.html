@@ -22,8 +22,9 @@
         }
     </script>
     
-    <!-- Supabase SDK -->
+    <!-- 核心库 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
 </head>
 <body class="bg-gradient-to-br from-blue-50 via-cyan-50 to-green-50 text-dark min-h-screen">
     
@@ -92,6 +93,28 @@
                 </div>
             </div>
 
+            <!-- 统计卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white rounded-2xl shadow-lg p-6 text-center">
+                    <h3 class="text-lg font-semibold text-primary mb-2">生态监测点</h3>
+                    <p id="statsEcological" class="text-3xl font-bold text-secondary">0</p>
+                </div>
+                <div class="bg-white rounded-2xl shadow-lg p-6 text-center">
+                    <h3 class="text-lg font-semibold text-primary mb-2">物种记录</h3>
+                    <p id="statsSpecies" class="text-3xl font-bold text-secondary">0</p>
+                </div>
+                <div class="bg-white rounded-2xl shadow-lg p-6 text-center">
+                    <h3 class="text-lg font-semibold text-primary mb-2">用户问答</h3>
+                    <p id="statsQA" class="text-3xl font-bold text-secondary">0</p>
+                </div>
+            </div>
+
+            <!-- 数据可视化 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                <h2 class="text-xl font-bold text-primary mb-4">生态数据趋势</h2>
+                <canvas id="ecologicalChart" width="400" height="200"></canvas>
+            </div>
+
             <!-- 数据面板 -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <!-- 生态数据 -->
@@ -115,8 +138,8 @@
                 <div id="qaHistory" class="mt-6 space-y-4"></div>
             </div>
 
-            <!-- 收藏管理（仅普通用户显示） -->
-            <div id="collectionsSection" class="bg-white rounded-2xl shadow-lg p-6">
+            <!-- 收藏管理 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
                 <h2 class="text-xl font-bold text-primary mb-4">我的收藏</h2>
                 <div id="collectionsList"></div>
             </div>
@@ -124,13 +147,104 @@
     </div>
 
     <script>
-        // ========== Supabase配置（内联，无需外部JS）==========
+        // ========== Supabase配置 ==========
         const SUPABASE_URL = 'https://pnakeholshmrtwctzqcb.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_tVf76wqdUIvhiNUymxKHEA_FAMmDvf3';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
+        // ========== AI配置（百度文心一言）==========
+        const AI_CONFIG = {
+            // 百度AI API配置（需申请，这里用模拟）
+            apiKey: 'your-baidu-api-key', // 在https://console.bce.baidu.com/ai申请
+            secretKey: 'your-baidu-secret-key',
+            endpoint: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions'
+        };
+        
+        // 模拟AI回答（生产环境替换为真实API调用）
+        async function getAIAnswer(question) {
+            // 模拟延迟
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 知识库匹配
+            const knowledgeBase = {
+                '珍稀物种': '三江源国家公园内分布有雪豹、藏羚羊、野牦牛、黑颈鹤等国家一级保护动物16种，国家二级保护动物41种。',
+                '保护措施': '三江源实施生态修复、退牧还草、生态移民、社区共管、自然教育等保护措施，累计投入超过200亿元。',
+                '中华水塔': '三江源是长江、黄河、澜沧江的发源地，年均向下游供水600亿立方米，被誉为“中华水塔”。',
+                '植被覆盖': '三江源植被覆盖率达68.5%，其中高覆盖度草地占42.3%，是亚洲最重要的水源涵养区。',
+                '气候变化': '近20年三江源气温上升1.2℃，年降水增加50mm，需加强气候适应性管理。'
+            };
+            
+            for (const [key, answer] of Object.entries(knowledgeBase)) {
+                if (question.includes(key)) return answer;
+            }
+            
+            return '三江源位于青海省南部，是长江、黄河、澜沧江的发源地，被称为“中华水塔”，是中国重要的生态安全屏障。';
+        }
+        
+        // ========== 图表配置 ==========
+        let ecologicalChart = null;
+        
+        // 初始化图表
+        function initChart() {
+            const ctx = document.getElementById('ecologicalChart').getContext('2d');
+            ecologicalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '植被覆盖度 (%)',
+                        data: [],
+                        borderColor: '#0E7C7B',
+                        backgroundColor: 'rgba(14, 124, 123, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: '水质PH值',
+                        data: [],
+                        borderColor: '#41C9E2',
+                        backgroundColor: 'rgba(65, 201, 226, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+        
+        // 加载图表数据
+        async function loadChartData() {
+            const { data, error } = await supabase
+                .from('ecological_data')
+                .select('record_date, data_type, value')
+                .order('record_date', { ascending: true })
+                .limit(30);
+            
+            if (error) {
+                console.error('图表数据加载失败:', error);
+                return;
+            }
+            
+            // 按日期和数据类型分组
+            const dates = [...new Set(data.map(item => item.record_date))];
+            const vegetationData = data.filter(item => item.data_type === '植被覆盖度').map(item => item.value);
+            const phData = data.filter(item => item.data_type === '水质PH值').map(item => item.value);
+            
+            ecologicalChart.data.labels = dates;
+            ecologicalChart.data.datasets[0].data = vegetationData;
+            ecologicalChart.data.datasets[1].data = phData;
+            ecologicalChart.update();
+        }
+        
+        // ========== 全局变量 ==========
         let currentUser = null;
         let currentSession = null;
+        let dataCache = { ecological: null, species: null, collections: null };
 
         // ========== 标签切换 ==========
         function switchTab(tab) {
@@ -147,365 +261,4 @@
                 loginForm.classList.remove('hidden');
                 registerForm.classList.add('hidden');
             } else {
-                registerTab.classList.add('border-primary', 'text-primary');
-                registerTab.classList.remove('border-gray-200', 'text-gray-500');
-                loginTab.classList.remove('border-primary', 'text-primary');
-                loginTab.classList.add('border-gray-200', 'text-gray-500');
-                registerForm.classList.remove('hidden');
-                loginForm.classList.add('hidden');
-            }
-        }
-
-        // ========== 登录 ==========
-        async function loginUser() {
-            const phone = document.getElementById('loginPhone').value.trim();
-            const password = document.getElementById('loginPwd').value.trim();
-            const messageDiv = document.getElementById('authMessage');
-            
-            // 管理员登录（硬编码）
-            if (phone === '18597123311' && password === 'Hm123321') {
-                currentUser = { id: '00000000-0000-0000-0000-000000000000', phone: '18597123311', name: '管理员', is_admin: true };
-                currentSession = { id: 'session-admin', user_id: '00000000-0000-0000-0000-000000000000' };
-                showMainApp();
-                return;
-            }
-            
-            // 普通用户登录（直接查询users表，无RLS）
-            try {
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('phone', phone)
-                    .eq('password_hash', password)
-                    .single();
-                
-                if (error) {
-                    console.error('登录查询错误:', error);
-                    messageDiv.innerHTML = '<p class="text-red text-center">手机号或密码错误</p>';
-                    return;
-                }
-                
-                if (!data) {
-                    messageDiv.innerHTML = '<p class="text-red text-center">手机号或密码错误</p>';
-                    return;
-                }
-                
-                currentUser = data;
-                
-                // 创建会话记录（仅普通用户）
-                const { data: sessionData, error: sessionError } = await supabase
-                    .from('user_sessions')
-                    .insert({
-                        user_id: data.id,
-                        login_time: new Date().toISOString(),
-                        ip_address: await getClientIP(),
-                        user_agent: navigator.userAgent
-                    })
-                    .select()
-                    .single();
-                
-                if (sessionError) {
-                    console.warn('会话记录失败:', sessionError);
-                } else {
-                    currentSession = sessionData;
-                }
-                
-                showMainApp();
-                messageDiv.innerHTML = '<p class="text-green text-center">登录成功！</p>';
-                
-            } catch (err) {
-                console.error('登录异常:', err);
-                messageDiv.innerHTML = `<p class="text-red text-center">登录失败: ${err.message}</p>`;
-            }
-        }
-
-        // ========== 注册 ==========
-        async function registerUser() {
-            const phone = document.getElementById('regPhone').value.trim();
-            const name = document.getElementById('regName').value.trim();
-            const password = document.getElementById('regPwd').value.trim();
-            const confirm = document.getElementById('regConfirmPwd').value.trim();
-            const messageDiv = document.getElementById('authMessage');
-            
-            if (!/^1[3-9]\d{9}$/.test(phone)) {
-                messageDiv.innerHTML = '<p class="text-red text-center">请输入有效的手机号</p>';
-                return;
-            }
-            
-            if (password !== confirm) {
-                messageDiv.innerHTML = '<p class="text-red text-center">两次密码不一致</p>';
-                return;
-            }
-            
-            try {
-                // 检查手机号是否存在（修复：返回数组，不为null）
-                const { data: existing, error: checkError } = await supabase
-                    .from('users')
-                    .select('phone')
-                    .eq('phone', phone);
-                
-                if (checkError) {
-                    console.error('检查手机号错误:', checkError);
-                    messageDiv.innerHTML = '<p class="text-red text-center">检查失败，请重试</p>';
-                    return;
-                }
-                
-                // 正确判断：检查数组长度
-                if (existing && existing.length > 0) {
-                    messageDiv.innerHTML = '<p class="text-red text-center">该手机号已注册</p>';
-                    return;
-                }
-                
-                // 创建用户（无RLS限制）
-                const { data, error } = await supabase
-                    .from('users')
-                    .insert({
-                        phone: phone,
-                        name: name,
-                        password_hash: password, // 明文存储，简化部署
-                        is_admin: false,
-                        created_at: new Date().toISOString()
-                    })
-                    .select()
-                    .single();
-                
-                if (error) {
-                    messageDiv.innerHTML = `<p class="text-red text-center">注册失败: ${error.message}</p>`;
-                    return;
-                }
-                
-                messageDiv.innerHTML = '<p class="text-green text-center">注册成功！正在跳转登录...</p>';
-                setTimeout(() => {
-                    switchTab('login');
-                    document.getElementById('regPhone').value = '';
-                    document.getElementById('regName').value = '';
-                    document.getElementById('regPwd').value = '';
-                    document.getElementById('regConfirmPwd').value = '';
-                }, 1500);
-                
-            } catch (err) {
-                console.error('注册异常:', err);
-                messageDiv.innerHTML = `<p class="text-red text-center">注册失败: ${err.message}</p>`;
-            }
-        }
-
-        // ========== 显示主应用 ==========
-        async function showMainApp() {
-            document.getElementById('authPage').classList.add('hidden');
-            document.getElementById('mainPage').classList.remove('hidden');
-            document.getElementById('userNameDisplay').textContent = currentUser.name;
-            
-            // 管理员不显示收藏功能
-            if (currentUser.is_admin) {
-                document.getElementById('collectionsSection').classList.add('hidden');
-            } else {
-                document.getElementById('collectionsSection').classList.remove('hidden');
-            }
-            
-            // 并行加载数据
-            await Promise.all([
-                loadEcologicalData(),
-                loadSpeciesData(),
-                currentUser.is_admin ? Promise.resolve() : loadCollections(),
-                loadUserStats()
-            ]);
-        }
-
-        // ========== 加载生态数据 ==========
-        async function loadEcologicalData() {
-            const { data, error } = await supabase.from('ecological_data').select('*').limit(10);
-            const div = document.getElementById('ecologicalDataList');
-            
-            if (error) {
-                div.innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
-                return;
-            }
-            
-            div.innerHTML = data.map(item => `
-                <div class="data-item">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-bold text-primary">${item.data_type}</h4>
-                            <p class="text-sm text-gray-600">位置: ${item.location}</p>
-                            <p class="text-sm text-gray-600">数值: ${item.value} ${item.unit}</p>
-                            <p class="text-xs text-gray-400">日期: ${item.record_date}</p>
-                        </div>
-                        ${currentUser && !currentUser.is_admin ? `<button onclick="collectItem('生态数据', '${item.data_type}', '${item.location}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // ========== 加载物种数据 ==========
-        async function loadSpeciesData() {
-            const { data, error } = await supabase.from('species_records').select('*').limit(10);
-            const div = document.getElementById('speciesDataList');
-            
-            if (error) {
-                div.innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
-                return;
-            }
-            
-            div.innerHTML = data.map(item => `
-                <div class="data-item">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-bold text-primary">${item.species_name}</h4>
-                            <p class="text-sm text-gray-600">数量: ${item.count}</p>
-                            <p class="text-sm text-gray-600">位置: ${item.location}</p>
-                            <p class="text-xs text-gray-400">日期: ${item.observation_date}</p>
-                        </div>
-                        ${currentUser && !currentUser.is_admin ? `<button onclick="collectItem('物种', '${item.species_name}', '数量: ${item.count}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // ========== 智能问答 ==========
-        async function askQuestion() {
-            const input = document.getElementById('questionInput');
-            const question = input.value.trim();
-            if (!question) return;
-            
-            const answer = getMockAnswer(question);
-            const qaHistory = document.getElementById('qaHistory');
-            
-            // 显示问答
-            const qaItem = document.createElement('div');
-            qaItem.className = 'data-item';
-            qaItem.innerHTML = `
-                <p><strong>问:</strong> ${question}</p>
-                <p><strong>答:</strong> ${answer}</p>
-                <div class="text-right mt-2">
-                    ${currentUser && !currentUser.is_admin ? `<button onclick="collectQA('${question}', '${answer}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
-                </div>
-            `;
-            qaHistory.insertBefore(qaItem, qaHistory.firstChild);
-            
-            // 保存到qa_logs（如果已登录且不是管理员）
-            if (currentUser && !currentUser.is_admin) {
-                await supabase.from('qa_logs').insert({
-                    user_id: currentUser.id,
-                    question: question,
-                    answer: answer,
-                    created_at: new Date().toISOString()
-                });
-            }
-            
-            input.value = '';
-        }
-
-        // ========== 收藏功能 ==========
-        async function collectItem(type, title, content) {
-            if (!currentUser || currentUser.is_admin) return;
-            
-            try {
-                await supabase.from('collections').insert({
-                    user_id: currentUser.id,
-                    type: type,
-                    title: title,
-                    content: content,
-                    created_at: new Date().toISOString()
-                });
-                
-                alert('收藏成功！');
-                loadCollections();
-            } catch (err) {
-                alert('收藏失败: ' + err.message);
-            }
-        }
-        
-        async function collectQA(question, answer) {
-            await collectItem('问答', question.substring(0, 50) + '...', answer);
-        }
-
-        // ========== 加载收藏 ==========
-        async function loadCollections() {
-            if (!currentUser || currentUser.is_admin) {
-                document.getElementById('collectionsList').innerHTML = '<p class="text-center text-gray-500">管理员无收藏功能</p>';
-                return;
-            }
-            
-            const { data, error } = await supabase
-                .from('collections')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false })
-                .limit(20);
-            
-            const div = document.getElementById('collectionsList');
-            
-            if (error) {
-                div.innerHTML = `<p class="text-red">加载收藏失败: ${error.message}</p>`;
-                return;
-            }
-            
-            if (data.length === 0) {
-                div.innerHTML = '<p class="text-center text-gray-500">暂无收藏</p>';
-                return;
-            }
-            
-            div.innerHTML = data.map(item => `
-                <div class="data-item">
-                    <h4 class="font-bold">${item.title}</h4>
-                    <p class="text-sm text-gray-600">${item.content}</p>
-                    <p class="text-xs text-gray-400 mt-1">${item.created_at}</p>
-                </div>
-            `).join('');
-        }
-
-        // ========== 加载用户统计 ==========
-        async function loadUserStats() {
-            if (!currentUser || currentUser.is_admin) return;
-            
-            // 问答数量
-            const { count: qaCount } = await supabase
-                .from('qa_logs')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', currentUser.id);
-            
-            // 收藏数量
-            const { count: collectionCount } = await supabase
-                .from('collections')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', currentUser.id);
-            
-            console.log(`用户统计: ${currentUser.name}, 问答${qaCount}条, 收藏${collectionCount}个`);
-        }
-
-        // ========== 退出 ==========
-        async function logout() {
-            if (currentSession && currentSession.id !== 'session-admin') {
-                await supabase
-                    .from('user_sessions')
-                    .update({ logout_time: new Date().toISOString() })
-                    .eq('id', currentSession.id);
-            }
-            
-            currentUser = null;
-            currentSession = null;
-            document.getElementById('authPage').classList.remove('hidden');
-            document.getElementById('mainPage').classList.add('hidden');
-        }
-
-        // ========== 工具函数 ==========
-        async function getClientIP() {
-            try {
-                const res = await fetch('https://api.ipify.org?format=json');
-                const data = await res.json();
-                return data.ip || '未知';
-            } catch {
-                return '未知';
-            }
-        }
-
-        function getMockAnswer(question) {
-            const q = question.toLowerCase();
-            if (q.includes('珍稀物种')) return "三江源的珍稀物种包括雪豹、藏羚羊、野牦牛、黑颈鹤等国家一级保护动物16种。";
-            if (q.includes('保护措施')) return "三江源保护措施包括生态修复、退牧还草、生态移民、社区共管等。";
-            if (q.includes('中华水塔')) return "三江源被称为'中华水塔'，是长江、黄河、澜沧江的发源地。";
-            return "三江源位于青海省南部，是长江、黄河、澜沧江的发源地，被称为'中华水塔'。";
-        }
-    </script>
-</body>
-</html>
+                registerTab.classList.add('border-primary', 'text-primary
