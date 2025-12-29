@@ -2,12 +2,40 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>三江源生态智能问答平台</title>
     
-    <!-- Tailwind CSS -->
+    <!-- 原有CDN资源 -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+
+    <!-- Tailwind自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow { text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+            .login-shadow { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); }
+            .qa-item-user { @apply flex justify-start mb-4 animate-fadeIn; }
+            .qa-content-user { @apply bg-gray-100 rounded-lg rounded-tl-none px-4 py-3 max-w-[80%] shadow-sm; }
+            .qa-item-bot { @apply flex justify-end mb-4 animate-fadeIn; }
+            .qa-content-bot { @apply bg-primary/10 rounded-lg rounded-tr-none px-4 py-3 max-w-[80%] shadow-sm border border-primary/20; }
+            .loading-dot { @apply inline-block w-2 h-2 rounded-full bg-primary mx-0.5 animate-bounce; }
+            .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+            .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+            .collect-btn { @apply text-gray-400 hover:text-yellow-500 transition-colors ml-2 cursor-pointer; }
+            .collect-btn.active { @apply text-yellow-500; }
+            .toast { @apply fixed bottom-6 left-1/2 -translate-x-1/2 bg-dark/80 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm transition-all duration-300 opacity-0 translate-y-4; }
+            .toast.show { @apply opacity-100 translate-y-0; }
+            .toast.error { @apply bg-red-500; }
+            .admin-card { @apply bg-white rounded-xl shadow-lg p-6 mb-6; }
+            .touchable { @apply min-h-[44px] flex items-center justify-center; }
+        }
+    </style>
+
     <script>
+        // Tailwind配置
         tailwind.config = {
             theme: {
                 extend: {
@@ -16,135 +44,364 @@
                         secondary: '#41C9E2',
                         accent: '#A0D8B3',
                         dark: '#2C3E50',
+                    },
+                    fontFamily: {
+                        sans: ['PingFang SC', 'Microsoft YaHei', 'sans-serif'],
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            'from': { opacity: '0', transform: 'translateY(10px)' },
+                            'to': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        shake: {
+                            '0%,100%': { transform: 'translateX(0)' },
+                            '20%,60%': { transform: 'translateX(-5px)' },
+                            '40%,80%': { transform: 'translateX(5px)' }
+                        }
+                    },
+                    animation: {
+                        'fadeIn': 'fadeIn 0.3s ease-out',
+                        'shake': 'shake 0.5s ease-in-out'
                     }
                 }
             }
         }
     </script>
-    
-    <!-- 核心库 -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
 </head>
 <body class="bg-gradient-to-br from-blue-50 via-cyan-50 to-green-50 text-dark min-h-screen">
-    
-    <!-- 认证页面 -->
-    <div id="authPage" class="min-h-screen flex items-center justify-center p-4">
-        <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
-            <h1 class="text-3xl font-bold text-center text-primary mb-8">三江源生态智能问答平台</h1>
-            
-            <div class="flex mb-6">
-                <button id="loginTab" class="flex-1 py-2 font-semibold border-b-2 border-primary text-primary" onclick="switchTab('login')">登录</button>
-                <button id="registerTab" class="flex-1 py-2 font-semibold border-b-2 border-gray-200 text-gray-500" onclick="switchTab('register')">注册</button>
+    <!-- 登录注册弹窗 -->
+    <div id="authPage" class="fixed inset-0 bg-dark/70 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md login-shadow overflow-hidden transform transition-all duration-300">
+            <div class="flex border-b border-gray-200">
+                <button id="loginTab" class="flex-1 py-3 font-medium text-primary border-b-2 border-primary text-center transition-all touchable">
+                    <i class="fa fa-sign-in mr-1"></i>登录
+                </button>
+                <button id="registerTab" class="flex-1 py-3 font-medium text-gray-500 hover:text-primary text-center transition-all touchable">
+                    <i class="fa fa-user-plus mr-1"></i>注册
+                </button>
             </div>
-            
             <!-- 登录表单 -->
-            <div id="loginForm">
-                <h2 class="text-xl font-bold text-center mb-4">用户登录</h2>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">手机号</label>
-                    <input type="tel" id="loginPhone" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入11位手机号">
-                </div>
-                <div class="mb-6">
-                    <label class="block text-sm font-medium mb-2">密码</label>
-                    <input type="password" id="loginPwd" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入密码（≥8位）">
-                </div>
-                <button onclick="loginUser()" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90 transition">登录</button>
-                <p class="mt-4 text-center text-sm text-gray-500">管理员：18597123311 / Hm123321</p>
-            </div>
-            
-            <!-- 注册表单 -->
-            <div id="registerForm" class="hidden">
-                <h2 class="text-xl font-bold text-center mb-4">用户注册</h2>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">手机号</label>
-                    <input type="tel" id="regPhone" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入11位手机号">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">用户名</label>
-                    <input type="text" id="regName" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入用户名">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">密码</label>
-                    <input type="password" id="regPwd" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入密码（≥8位）">
-                </div>
-                <div class="mb-6">
-                    <label class="block text-sm font-medium mb-2">确认密码</label>
-                    <input type="password" id="regConfirmPwd" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请再次输入密码">
-                </div>
-                <button onclick="registerUser()" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90 transition">注册</button>
-            </div>
-            
-            <div id="authMessage" class="mt-4 text-center"></div>
-        </div>
-    </div>
-
-    <!-- 主应用页面 -->
-    <div id="mainPage" class="hidden min-h-screen p-4">
-        <div class="max-w-6xl mx-auto">
-            <!-- 顶部导航 -->
-            <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold text-primary">三江源生态智能问答平台</h1>
-                    <div class="flex items-center gap-4">
-                        <span id="userNameDisplay" class="text-lg font-medium"></span>
-                        <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">退出</button>
+            <div id="loginForm" class="p-6">
+                <h3 class="text-xl font-bold text-primary mb-4 text-center">用户登录</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="loginPhone" class="block text-sm font-medium text-gray-700 mb-1">手机号</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                <i class="fa fa-phone"></i>
+                            </span>
+                            <input type="tel" id="loginPhone" placeholder="11位手机号" maxlength="11"
+                                   class="pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="loginPwd" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                <i class="fa fa-lock"></i>
+                            </span>
+                            <input type="password" id="loginPwd" placeholder="至少8位密码" maxlength="20"
+                                   class="pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                        </div>
+                    </div>
+                    <div id="loginError" class="hidden text-red-500 text-sm text-center mt-1 py-2 bg-red-50 rounded-lg">手机号或密码错误</div>
+                    <button id="loginBtn" class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors touchable">登录</button>
+                    
+                    <!-- 管理员登录提示 -->
+                    <div class="text-center text-xs text-gray-500 mt-4 pt-4 border-t border-gray-200">
+                        <p>管理员账号：18597123311 / Hm123321</p>
                     </div>
                 </div>
             </div>
-
-            <!-- 统计卡片 -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div class="bg-white rounded-2xl shadow-lg p-6 text-center">
-                    <h3 class="text-lg font-semibold text-primary mb-2">生态监测点</h3>
-                    <p id="statsEcological" class="text-3xl font-bold text-secondary">0</p>
+            <!-- 注册表单 -->
+            <div id="registerForm" class="p-6 hidden">
+                <h3 class="text-xl font-bold text-primary mb-4 text-center">用户注册</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="regPhone" class="block text-sm font-medium text-gray-700 mb-1">手机号</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                <i class="fa fa-phone"></i>
+                            </span>
+                            <input type="tel" id="regPhone" placeholder="11位手机号" maxlength="11"
+                                   class="pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="regName" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                <i class="fa fa-user"></i>
+                            </span>
+                            <input type="text" id="regName" placeholder="1-20位用户名" maxlength="20"
+                                   class="pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="regPwd" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                <i class="fa fa-lock"></i>
+                            </span>
+                            <input type="password" id="regPwd" placeholder="至少8位密码" maxlength="20"
+                                   class="pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="regConfirmPwd" class="block text-sm font-medium text-gray-700 mb-1">确认密码</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                <i class="fa fa-lock"></i>
+                            </span>
+                            <input type="password" id="regConfirmPwd" placeholder="再次输入密码" maxlength="20"
+                                   class="pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                        </div>
+                    </div>
+                    <div id="regSuccess" class="hidden text-green-500 text-sm text-center mt-1 py-2 bg-green-50 rounded-lg">注册成功！即将跳转登录</div>
+                    <button id="regBtn" class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors touchable">注册</button>
                 </div>
-                <div class="bg-white rounded-2xl shadow-lg p-6 text-center">
-                    <h3 class="text-lg font-semibold text-primary mb-2">物种记录</h3>
-                    <p id="statsSpecies" class="text-3xl font-bold text-secondary">0</p>
-                </div>
-                <div class="bg-white rounded-2xl shadow-lg p-6 text-center">
-                    <h3 class="text-lg font-semibold text-primary mb-2">用户问答</h3>
-                    <p id="statsQA" class="text-3xl font-bold text-secondary">0</p>
-                </div>
-            </div>
-
-            <!-- 数据可视化 -->
-            <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                <h2 class="text-xl font-bold text-primary mb-4">生态数据趋势</h2>
-                <canvas id="ecologicalChart" width="400" height="200"></canvas>
-            </div>
-
-            <!-- 数据面板 -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <!-- 生态数据 -->
-                <div class="bg-white rounded-2xl shadow-lg p-6">
-                    <h2 class="text-xl font-bold text-primary mb-4">生态监测数据</h2>
-                    <div id="ecologicalDataList" class="space-y-4"></div>
-                </div>
-
-                <!-- 物种记录 -->
-                <div class="bg-white rounded-2xl shadow-lg p-6">
-                    <h2 class="text-xl font-bold text-primary mb-4">物种记录</h2>
-                    <div id="speciesDataList" class="space-y-4"></div>
-                </div>
-            </div>
-
-            <!-- 智能问答 -->
-            <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                <h2 class="text-xl font-bold text-primary mb-4">智能问答</h2>
-                <textarea id="questionInput" class="w-full h-32 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入关于三江源生态的问题..."></textarea>
-                <button onclick="askQuestion()" class="mt-4 bg-primary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition">提问</button>
-                <div id="qaHistory" class="mt-6 space-y-4"></div>
-            </div>
-
-            <!-- 收藏管理 -->
-            <div id="collectionsSection" class="bg-white rounded-2xl shadow-lg p-6">
-                <h2 class="text-xl font-bold text-primary mb-4">我的收藏</h2>
-                <div id="collectionsList"></div>
             </div>
         </div>
     </div>
+
+    <!-- 普通用户主页面 -->
+    <div id="mainPage" class="hidden min-h-screen">
+        <!-- 顶部横幅 -->
+        <header class="relative h-[40vh] min-h-[300px] bg-center bg-cover" style="background-image: url('https://images.unsplash.com/photo-1559827260-dc66d52bef19?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80&sat=-30');">
+            <div class="absolute inset-0 bg-gradient-to-t from-dark/70 to-dark/30 flex flex-col items-center justify-center text-white w-full">
+                <h1 class="text-[clamp(1.8rem,4vw,3.5rem)] font-bold text-center text-shadow">三江源生态智能问答</h1>
+                <p class="text-[clamp(1rem,2vw,1.5rem)] mt-3 text-center text-shadow">探索中华水塔 · 守护高原生态</p>
+                <div class="mt-4 text-white/80">
+                    <i class="fa fa-mountain text-2xl"></i>
+                    <i class="fa fa-water text-2xl mx-4"></i>
+                    <i class="fa fa-leaf text-2xl"></i>
+                </div>
+            </div>
+        </header>
+        
+        <!-- 用户导航 -->
+        <nav class="sticky top-0 bg-primary/90 backdrop-blur-sm text-white z-40 shadow-md">
+            <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
+                <div class="flex space-x-4 mb-2 md:mb-0">
+                    <a href="#knowledge" class="hover:text-accent transition-colors font-medium">生态知识</a>
+                    <a href="#qa" class="hover:text-accent transition-colors font-medium">智能问答</a>
+                    <a href="#collection" class="hover:text-accent transition-colors font-medium">我的收藏</a>
+                    <a href="#data" class="hover:text-accent transition-colors font-medium">生态数据</a>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="userName" class="font-medium">欢迎你！</span>
+                    <button onclick="logout()" class="hover:text-accent transition-colors touchable">
+                        <i class="fa fa-sign-out"></i> 退出
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 生态知识区 -->
+        <section id="knowledge" class="py-10 bg-white/90 backdrop-blur-sm">
+            <div class="container mx-auto px-4">
+                <h2 class="text-2xl font-bold text-center mb-8 text-primary">三江源国家公园核心生态数据</h2>
+                
+                <div class="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+                    <!-- 基础概况 -->
+                    <div class="bg-white/80 rounded-lg p-5 shadow-sm border-l-4 border-primary backdrop-blur-sm">
+                        <h3 class="font-semibold text-lg mb-3 text-secondary">
+                            <i class="fa fa-map-marker mr-2"></i>地理概况
+                        </h3>
+                        <ul class="space-y-2 text-sm">
+                            <li>📍 <strong>地理位置</strong>：青海省南部，青藏高原腹地</li>
+                            <li>🗺️ <strong>涵盖范围</strong>：玉树、果洛、黄南、海南4州及格尔木市唐古拉山镇</li>
+                            <li>🏔️ <strong>海拔范围</strong>：3335-6564米（平均4500米以上）</li>
+                            <li>💧 <strong>水系构成</strong>：长江源、黄河源、澜沧江源3大园区</li>
+                            <li>🌿 <strong>总面积</strong>：36.3万平方公里（保护区）<br>12.31万平方公里（国家公园）</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- 生物多样性 -->
+                    <div class="bg-white/80 rounded-lg p-5 shadow-sm border-l-4 border-primary backdrop-blur-sm">
+                        <h3 class="font-semibold text-lg mb-3 text-secondary">
+                            <i class="fa fa-paw mr-2"></i>生物多样性
+                        </h3>
+                        <div class="space-y-3 text-sm">
+                            <div><strong>物种总数</strong>：维管植物2,238种 • 脊椎动物370种</div>
+                            <div><strong>珍稀濒危物种</strong>：
+                                <ul class="ml-4 mt-1 space-y-1">
+                                    <li>• 国家一级保护动物：16种（雪豹、藏羚羊、野牦牛等）</li>
+                                    <li>• 国家二级保护动物：53种（藏原羚、岩羊、藏狐等）</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 生态价值 -->
+                    <div class="bg-white/80 rounded-lg p-5 shadow-sm border-l-4 border-primary backdrop-blur-sm">
+                        <h3 class="font-semibold text-lg mb-3 text-secondary">
+                            <i class="fa fa-chart-line mr-2"></i>生态服务价值
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                            <div>💧 <strong>水源涵养</strong>：年均径流量600亿立方米</div>
+                            <div>🌊 <strong>水量贡献</strong>：长江25% • 黄河49% • 澜沧江15%</div>
+                            <div>🌳 <strong>碳汇功能</strong>：年固碳1200万吨</div>
+                            <div>🛡️ <strong>水土保持</strong>：减少侵蚀3.8亿吨/年</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 保护措施 -->
+                    <div class="bg-white/80 rounded-lg p-5 shadow-sm border-l-4 border-primary backdrop-blur-sm">
+                        <h3 class="font-semibold text-lg mb-3 text-secondary">
+                            <i class="fa fa-shield mr-2"></i>保护措施与成效
+                        </h3>
+                        <div class="space-y-2 text-sm">
+                            <div>✅ <strong>生态修复</strong>：治理黑土滩2.5万km² • 恢复湿地1.6万km²</div>
+                            <div>✅ <strong>退牧还草</strong>：禁牧0.93亿亩 • 休牧1.58亿亩</div>
+                            <div>✅ <strong>社区共管</strong>：设立生态管护员17,211个</div>
+                            <div>📈 <strong>保护成效</strong>：草地盖度提高11% • 水源涵养量增6%/年</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 智能问答区 -->
+        <section id="qa" class="py-10 bg-gradient-to-b from-blue-50/50 to-transparent">
+            <div class="container mx-auto px-4">
+                <h2 class="text-2xl font-bold text-center mb-8 text-primary">智能问答</h2>
+                <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden backdrop-blur-sm">
+                    <div class="bg-primary text-white p-3 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <span>关于三江源，随时提问</span>
+                        </div>
+                    </div>
+                    
+                    <div id="chatBox" class="p-4 h-[50vh] overflow-y-auto space-y-4">
+                        <div class="text-center text-gray-400 py-8">
+                            <i class="fa fa-comment-o text-3xl mb-2"></i>
+                            <p>输入问题，获取专业回答</p>
+                            <p class="text-xs mt-2">专注于三江源生态保护相关问题</p>
+                        </div>
+                    </div>
+                    <div class="p-3 border-t flex">
+                        <input type="text" id="questionInput" placeholder="输入关于三江源生态保护的问题（最多100字）" maxlength="100"
+                               class="flex-1 px-3 py-2 rounded-l-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                        <button onclick="askQuestion()" class="bg-primary text-white px-4 py-2 rounded-r-lg hover:bg-primary/90 transition-colors touchable">
+                            <i class="fa fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 问题建议 -->
+                <div class="mt-6 max-w-2xl mx-auto">
+                    <h3 class="text-sm font-medium text-gray-600 mb-2">您可以提问：</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button class="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full hover:bg-gray-200 transition-colors" onclick="fillQuestion('三江源有哪些珍稀物种？')">珍稀物种</button>
+                        <button class="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full hover:bg-gray-200 transition-colors" onclick="fillQuestion('如何保护三江源生态环境？')">保护措施</button>
+                        <button class="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full hover:bg-gray-200 transition-colors" onclick="fillQuestion('三江源为什么叫中华水塔？')">中华水塔</button>
+                        <button class="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full hover:bg-gray-200 transition-colors" onclick="fillQuestion('三江源的气候特点是什么？')">气候特点</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 我的收藏 -->
+        <section id="collection" class="py-10 bg-gradient-to-b from-green-50/50 to-transparent">
+            <div class="container mx-auto px-4">
+                <h2 class="text-2xl font-bold text-center mb-8 text-primary">我的收藏</h2>
+                <div id="collectionBox" class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-5 min-h-[200px] backdrop-blur-sm">
+                    <div class="text-center text-gray-400 py-8" id="emptyCollection">
+                        <i class="fa fa-star-o text-3xl mb-2"></i>
+                        <p>暂无收藏，点击回答旁⭐收藏</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 生态数据区 -->
+        <section id="data" class="py-10 bg-white/90 backdrop-blur-sm">
+            <div class="container mx-auto px-4">
+                <h2 class="text-2xl font-bold text-center mb-8 text-primary">生态监测数据</h2>
+                
+                <!-- 统计卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 max-w-4xl mx-auto">
+                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-6 shadow-sm">
+                        <div class="flex items-center mb-4">
+                            <div class="bg-blue-500/20 p-3 rounded-lg mr-4">
+                                <i class="fa fa-tree text-blue-500 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-gray-600 text-sm">生态监测点</p>
+                                <p id="statsEcological" class="text-2xl font-bold text-blue-600">0</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500">实时监测点位</p>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 shadow-sm">
+                        <div class="flex items-center mb-4">
+                            <div class="bg-green-500/20 p-3 rounded-lg mr-4">
+                                <i class="fa fa-paw text-green-500 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-gray-600 text-sm">物种记录</p>
+                                <p id="statsSpecies" class="text-2xl font-bold text-green-600">0</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500">已记录物种数量</p>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-6 shadow-sm">
+                        <div class="flex items-center mb-4">
+                            <div class="bg-purple-500/20 p-3 rounded-lg mr-4">
+                                <i class="fa fa-comments text-purple-500 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-gray-600 text-sm">用户问答</p>
+                                <p id="statsQA" class="text-2xl font-bold text-purple-600">0</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500">历史问答总数</p>
+                    </div>
+                </div>
+
+                <!-- 数据可视化 -->
+                <div class="bg-white rounded-xl shadow-lg p-6 mb-6 max-w-4xl mx-auto">
+                    <h3 class="text-lg font-medium mb-4 text-primary flex items-center">
+                        <i class="fa fa-chart-line mr-2"></i>生态数据趋势
+                    </h3>
+                    <canvas id="ecologicalChart" width="400" height="200"></canvas>
+                </div>
+
+                <!-- 数据面板 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                    <!-- 生态数据 -->
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-medium mb-4 text-primary flex items-center">
+                            <i class="fa fa-tree mr-2"></i>生态监测数据
+                        </h3>
+                        <div id="ecologicalDataList" class="space-y-4"></div>
+                    </div>
+
+                    <!-- 物种记录 -->
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-medium mb-4 text-primary flex items-center">
+                            <i class="fa fa-paw mr-2"></i>物种记录
+                        </h3>
+                        <div id="speciesDataList" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 底部 -->
+        <footer class="bg-dark text-white py-6 mt-auto">
+            <div class="container mx-auto px-4 text-center text-sm">
+                <p>三江源生态智能问答平台 | 仅供学习演示</p>
+                <p class="text-gray-400 mt-1">保护中华水塔，人人有责</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 提示框 -->
+    <div id="toast" class="toast"></div>
 
     <script>
         // ========== Supabase配置 ==========
@@ -152,35 +409,224 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_tVf76wqdUIvhiNUymxKHEA_FAMmDvf3';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        // ========== AI配置（百度文心一言）==========
-        const AI_CONFIG = {
-            apiKey: 'your-baidu-api-key',
-            secretKey: 'your-baidu-secret-key',
-            endpoint: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions'
-        };
+        // ========== 管理员配置 ==========
+        const ADMIN_PHONE = '18597123311';
+        const ADMIN_PASSWORD = 'Hm123321';
         
-        // 模拟AI回答
-        async function getAIAnswer(question) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+        // ========== 全局变量 ==========
+        let currentUser = null;
+        let ecologicalChart = null;
+        let dataCache = { ecological: null, species: null, collections: null };
+        
+        // ========== DOM缓存 ==========
+        const DOM = {
+            authPage: document.getElementById('authPage'),
+            mainPage: document.getElementById('mainPage'),
+            loginTab: document.getElementById('loginTab'),
+            registerTab: document.getElementById('registerTab'),
+            loginForm: document.getElementById('loginForm'),
+            registerForm: document.getElementById('registerForm'),
+            loginBtn: document.getElementById('loginBtn'),
+            regBtn: document.getElementById('regBtn'),
+            userName: document.getElementById('userName'),
+            chatBox: document.getElementById('chatBox'),
+            questionInput: document.getElementById('questionInput'),
+            collectionBox: document.getElementById('collectionBox'),
+            toast: document.getElementById('toast')
+        };
+
+        // ========== 工具函数 ==========
+        function showToast(txt, type = 'success') {
+            if (!DOM.toast) return;
             
-            const knowledgeBase = {
-                '珍稀物种': '三江源国家公园内分布有雪豹、藏羚羊、野牦牛、黑颈鹤等国家一级保护动物16种，国家二级保护动物41种。',
-                '保护措施': '三江源实施生态修复、退牧还草、生态移民、社区共管、自然教育等保护措施，累计投入超过200亿元。',
-                '中华水塔': '三江源是长江、黄河、澜沧江的发源地，年均向下游供水600亿立方米，被誉为“中华水塔”。',
-                '植被覆盖': '三江源植被覆盖率达68.5%，其中高覆盖度草地占42.3%，是亚洲最重要的水源涵养区。',
-                '气候变化': '近20年三江源气温上升1.2℃，年降水增加50mm，需加强气候适应性管理。'
-            };
+            DOM.toast.textContent = txt;
+            DOM.toast.className = 'toast show';
+            if (type === 'error') DOM.toast.classList.add('error');
+            setTimeout(() => {
+                DOM.toast.classList.remove('show');
+                DOM.toast.classList.remove('error');
+            }, 2000);
+        }
+
+        function formatDateTime(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // ========== 登录注册相关 ==========
+        function switchTab(tab) {
+            if (tab === 'login') {
+                DOM.loginForm.classList.remove('hidden');
+                DOM.registerForm.classList.add('hidden');
+                DOM.loginTab.classList.add('text-primary', 'border-b-2', 'border-primary');
+                DOM.loginTab.classList.remove('text-gray-500');
+                DOM.registerTab.classList.remove('text-primary', 'border-b-2', 'border-primary');
+                DOM.registerTab.classList.add('text-gray-500');
+            } else {
+                DOM.registerForm.classList.remove('hidden');
+                DOM.loginForm.classList.add('hidden');
+                DOM.registerTab.classList.add('text-primary', 'border-b-2', 'border-primary');
+                DOM.registerTab.classList.remove('text-gray-500');
+                DOM.loginTab.classList.remove('text-primary', 'border-b-2', 'border-primary');
+                DOM.loginTab.classList.add('text-gray-500');
+            }
+        }
+
+        async function login() {
+            const phone = document.getElementById('loginPhone').value.trim();
+            const password = document.getElementById('loginPwd').value.trim();
             
-            for (const [key, answer] of Object.entries(knowledgeBase)) {
-                if (question.includes(key)) return answer;
+            if (!phone || !password) {
+                showToast('请输入手机号和密码', 'error');
+                return;
             }
             
-            return '三江源位于青海省南部，是长江、黄河、澜沧江的发源地，被称为“中华水塔”，是中国重要的生态安全屏障。';
+            // 管理员登录
+            if (phone === ADMIN_PHONE && password === ADMIN_PASSWORD) {
+                currentUser = { id: 'admin', phone: ADMIN_PHONE, name: '管理员', is_admin: true };
+                showMainApp();
+                showToast('管理员登录成功');
+                return;
+            }
+            
+            // 普通用户登录
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('phone', phone)
+                    .eq('password_hash', password)
+                    .single();
+                
+                if (error || !data) {
+                    document.getElementById('loginError').classList.remove('hidden');
+                    showToast('手机号或密码错误', 'error');
+                    return;
+                }
+                
+                currentUser = data;
+                showMainApp();
+                showToast('登录成功');
+                
+            } catch (err) {
+                showToast(`登录失败: ${err.message}`, 'error');
+            }
         }
-        
-        // ========== 图表配置 ==========
-        let ecologicalChart = null;
-        
+
+        async function register() {
+            const phone = document.getElementById('regPhone').value.trim();
+            const name = document.getElementById('regName').value.trim();
+            const password = document.getElementById('regPwd').value.trim();
+            const confirm = document.getElementById('regConfirmPwd').value.trim();
+            
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                showToast('请输入有效的手机号', 'error');
+                return;
+            }
+            
+            if (password !== confirm) {
+                showToast('两次密码不一致', 'error');
+                return;
+            }
+            
+            try {
+                const { data: existing } = await supabase
+                    .from('users')
+                    .select('phone')
+                    .eq('phone', phone);
+                
+                if (existing && existing.length > 0) {
+                    showToast('该手机号已注册', 'error');
+                    return;
+                }
+                
+                const { data } = await supabase
+                    .from('users')
+                    .insert({
+                        phone: phone,
+                        name: name,
+                        password_hash: password,
+                        is_admin: false,
+                        created_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+                
+                document.getElementById('regSuccess').classList.remove('hidden');
+                showToast('注册成功！');
+                
+                setTimeout(() => {
+                    switchTab('login');
+                    document.getElementById('regPhone').value = '';
+                    document.getElementById('regName').value = '';
+                    document.getElementById('regPwd').value = '';
+                    document.getElementById('regConfirmPwd').value = '';
+                    document.getElementById('regSuccess').classList.add('hidden');
+                }, 1500);
+                
+            } catch (err) {
+                showToast(`注册失败: ${err.message}`, 'error');
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            dataCache = { ecological: null, species: null, collections: null };
+            DOM.authPage.classList.remove('hidden');
+            DOM.mainPage.classList.add('hidden');
+            showToast('已退出登录');
+        }
+
+        // ========== 主应用显示 ==========
+        async function showMainApp() {
+            DOM.authPage.classList.add('hidden');
+            DOM.mainPage.classList.remove('hidden');
+            DOM.userName.textContent = `欢迎，${currentUser.name}`;
+            
+            // 管理员不显示收藏功能
+            if (currentUser.is_admin) {
+                document.getElementById('collection').classList.add('hidden');
+            } else {
+                document.getElementById('collection').classList.remove('hidden');
+            }
+            
+            // 加载所有数据
+            await Promise.all([
+                loadStats(),
+                loadEcologicalData(),
+                loadSpeciesData(),
+                currentUser.is_admin ? Promise.resolve() : loadCollections(),
+                loadChartData(),
+                loadQAHistory()
+            ]);
+            
+            // 初始化图表
+            initChart();
+        }
+
+        // ========== 加载统计数据 ==========
+        async function loadStats() {
+            try {
+                const { count: ecoCount } = await supabase.from('ecological_data').select('*', { count: 'exact', head: true });
+                const { count: speciesCount } = await supabase.from('species_records').select('*', { count: 'exact', head: true });
+                const { count: qaCount } = await supabase.from('qa_logs').select('*', { count: 'exact', head: true });
+                
+                document.getElementById('statsEcological').textContent = ecoCount;
+                document.getElementById('statsSpecies').textContent = speciesCount;
+                document.getElementById('statsQA').textContent = qaCount;
+            } catch (error) {
+                console.error('加载统计数据失败:', error);
+            }
+        }
+
+        // ========== 图表相关 ==========
         function initChart() {
             const ctx = document.getElementById('ecologicalChart').getContext('2d');
             ecologicalChart = new Chart(ctx, {
@@ -208,178 +654,30 @@
                 }
             });
         }
-        
+
         async function loadChartData() {
-            const { data, error } = await supabase
-                .from('ecological_data')
-                .select('record_date, data_type, value')
-                .order('record_date', { ascending: true })
-                .limit(30);
-            
-            if (error) return;
-            
-            const dates = [...new Set(data.map(item => item.record_date))];
-            const vegetationData = data.filter(item => item.data_type === '植被覆盖度').map(item => item.value);
-            const phData = data.filter(item => item.data_type === '水质PH值').map(item => item.value);
-            
-            ecologicalChart.data.labels = dates;
-            ecologicalChart.data.datasets[0].data = vegetationData;
-            ecologicalChart.data.datasets[1].data = phData;
-            ecologicalChart.update();
-        }
-        
-        // ========== 全局变量 ==========
-        let currentUser = null;
-        let currentSession = null;
-        let dataCache = { ecological: null, species: null, collections: null };
-
-        // ========== 标签切换 ==========
-        function switchTab(tab) {
-            const loginTab = document.getElementById('loginTab');
-            const registerTab = document.getElementById('registerTab');
-            const loginForm = document.getElementById('loginForm');
-            const registerForm = document.getElementById('registerForm');
-            
-            if (tab === 'login') {
-                loginTab.classList.add('border-primary', 'text-primary');
-                loginTab.classList.remove('border-gray-200', 'text-gray-500');
-                registerTab.classList.remove('border-primary', 'text-primary');
-                registerTab.classList.add('border-gray-200', 'text-gray-500');
-                loginForm.classList.remove('hidden');
-                registerForm.classList.add('hidden');
-            } else {
-                registerTab.classList.add('border-primary', 'text-primary');
-                registerTab.classList.remove('border-gray-200', 'text-gray-500');
-                loginTab.classList.remove('border-primary', 'text-primary');
-                loginTab.classList.add('border-gray-200', 'text-gray-500');
-                registerForm.classList.remove('hidden');
-                loginForm.classList.add('hidden');
-            }
-        }
-
-        // ========== 登录 ==========
-        async function loginUser() {
-            const phone = document.getElementById('loginPhone').value.trim();
-            const password = document.getElementById('loginPwd').value.trim();
-            const messageDiv = document.getElementById('authMessage');
-            
-            // 管理员登录
-            if (phone === '18597123311' && password === 'Hm123321') {
-                currentUser = { id: 'admin', phone: '18597123311', name: '管理员', is_admin: true };
-                currentSession = { id: 'session-admin', user_id: 'admin' };
-                showMainApp();
-                return;
-            }
-            
-            // 普通用户登录
             try {
                 const { data, error } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('phone', phone)
-                    .eq('password_hash', password)
-                    .single();
+                    .from('ecological_data')
+                    .select('record_date, data_type, value')
+                    .order('record_date', { ascending: true })
+                    .limit(30);
                 
-                if (error || !data) {
-                    messageDiv.innerHTML = '<p class="text-red text-center">手机号或密码错误</p>';
-                    return;
+                if (error) throw error;
+                
+                const dates = [...new Set(data.map(item => item.record_date))];
+                const vegetationData = data.filter(item => item.data_type === '植被覆盖度').map(item => item.value);
+                const phData = data.filter(item => item.data_type === '水质PH值').map(item => item.value);
+                
+                if (ecologicalChart) {
+                    ecologicalChart.data.labels = dates;
+                    ecologicalChart.data.datasets[0].data = vegetationData;
+                    ecologicalChart.data.datasets[1].data = phData;
+                    ecologicalChart.update();
                 }
-                
-                currentUser = data;
-                showMainApp();
-                messageDiv.innerHTML = '<p class="text-green text-center">登录成功！</p>';
-                
-            } catch (err) {
-                messageDiv.innerHTML = `<p class="text-red text-center">登录失败: ${err.message}</p>`;
+            } catch (error) {
+                console.error('加载图表数据失败:', error);
             }
-        }
-
-        // ========== 注册 ==========
-        async function registerUser() {
-            const phone = document.getElementById('regPhone').value.trim();
-            const name = document.getElementById('regName').value.trim();
-            const password = document.getElementById('regPwd').value.trim();
-            const confirm = document.getElementById('regConfirmPwd').value.trim();
-            const messageDiv = document.getElementById('authMessage');
-            
-            if (!/^1[3-9]\d{9}$/.test(phone)) {
-                messageDiv.innerHTML = '<p class="text-red text-center">请输入有效的手机号</p>';
-                return;
-            }
-            
-            if (password !== confirm) {
-                messageDiv.innerHTML = '<p class="text-red text-center">两次密码不一致</p>';
-                return;
-            }
-            
-            try {
-                const { data: existing } = await supabase
-                    .from('users')
-                    .select('phone')
-                    .eq('phone', phone);
-                
-                if (existing && existing.length > 0) {
-                    messageDiv.innerHTML = '<p class="text-red text-center">该手机号已注册</p>';
-                    return;
-                }
-                
-                const { data } = await supabase
-                    .from('users')
-                    .insert({
-                        phone: phone,
-                        name: name,
-                        password_hash: password,
-                        is_admin: false,
-                        created_at: new Date().toISOString()
-                    })
-                    .select()
-                    .single();
-                
-                messageDiv.innerHTML = '<p class="text-green text-center">注册成功！正在跳转登录...</p>';
-                setTimeout(() => {
-                    switchTab('login');
-                    document.getElementById('regPhone').value = '';
-                    document.getElementById('regName').value = '';
-                    document.getElementById('regPwd').value = '';
-                    document.getElementById('regConfirmPwd').value = '';
-                }, 1500);
-                
-            } catch (err) {
-                messageDiv.innerHTML = `<p class="text-red text-center">注册失败: ${err.message}</p>`;
-            }
-        }
-
-        // ========== 显示主应用 ==========
-        async function showMainApp() {
-            document.getElementById('authPage').classList.add('hidden');
-            document.getElementById('mainPage').classList.remove('hidden');
-            document.getElementById('userNameDisplay').textContent = currentUser.name;
-            
-            // 管理员不显示收藏功能
-            if (currentUser.is_admin) {
-                document.getElementById('collectionsSection').classList.add('hidden');
-            } else {
-                document.getElementById('collectionsSection').classList.remove('hidden');
-            }
-            
-            await Promise.all([
-                loadStats(),
-                loadEcologicalData(),
-                loadSpeciesData(),
-                currentUser.is_admin ? Promise.resolve() : loadCollections(),
-                loadChartData()
-            ]);
-        }
-
-        // ========== 加载统计 ==========
-        async function loadStats() {
-            const { count: ecoCount } = await supabase.from('ecological_data').select('*', { count: 'exact', head: true });
-            const { count: speciesCount } = await supabase.from('species_records').select('*', { count: 'exact', head: true });
-            const { count: qaCount } = await supabase.from('qa_logs').select('*', { count: 'exact', head: true });
-            
-            document.getElementById('statsEcological').textContent = ecoCount;
-            document.getElementById('statsSpecies').textContent = speciesCount;
-            document.getElementById('statsQA').textContent = qaCount;
         }
 
         // ========== 加载生态数据 ==========
@@ -389,19 +687,32 @@
                 return;
             }
             
-            const { data, error } = await supabase.from('ecological_data').select('*').limit(10);
-            
-            if (error) {
-                document.getElementById('ecologicalDataList').innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
-                return;
+            try {
+                const { data, error } = await supabase
+                    .from('ecological_data')
+                    .select('*')
+                    .order('record_date', { ascending: false })
+                    .limit(10);
+                
+                if (error) throw error;
+                
+                dataCache.ecological = data;
+                renderEcologicalData(data);
+            } catch (error) {
+                console.error('加载生态数据失败:', error);
+                document.getElementById('ecologicalDataList').innerHTML = `<p class="text-red-500 text-center">加载失败</p>`;
             }
-            
-            dataCache.ecological = data;
-            renderEcologicalData(data);
         }
         
         function renderEcologicalData(data) {
             const div = document.getElementById('ecologicalDataList');
+            if (!div) return;
+            
+            if (!data || data.length === 0) {
+                div.innerHTML = '<p class="text-gray-500 text-center">暂无数据</p>';
+                return;
+            }
+            
             div.innerHTML = data.map(item => `
                 <div class="data-item border-b pb-3">
                     <div class="flex justify-between items-start">
@@ -411,7 +722,11 @@
                             <p class="text-sm text-gray-600">数值: ${item.value} ${item.unit}</p>
                             <p class="text-xs text-gray-400">日期: ${item.record_date}</p>
                         </div>
-                        ${currentUser && !currentUser.is_admin ? `<button onclick="collectItem('生态数据', '${item.data_type}', '${item.location}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
+                        ${currentUser && !currentUser.is_admin ? 
+                            `<button onclick="collectItem('生态数据', '${item.data_type}', '${item.location}')" 
+                                class="text-yellow-500 hover:text-yellow-600">
+                                <i class="fa fa-star"></i>
+                            </button>` : ''}
                     </div>
                 </div>
             `).join('');
@@ -424,19 +739,32 @@
                 return;
             }
             
-            const { data, error } = await supabase.from('species_records').select('*').limit(10);
-            
-            if (error) {
-                document.getElementById('speciesDataList').innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
-                return;
+            try {
+                const { data, error } = await supabase
+                    .from('species_records')
+                    .select('*')
+                    .order('observation_date', { ascending: false })
+                    .limit(10);
+                
+                if (error) throw error;
+                
+                dataCache.species = data;
+                renderSpeciesData(data);
+            } catch (error) {
+                console.error('加载物种数据失败:', error);
+                document.getElementById('speciesDataList').innerHTML = `<p class="text-red-500 text-center">加载失败</p>`;
             }
-            
-            dataCache.species = data;
-            renderSpeciesData(data);
         }
         
         function renderSpeciesData(data) {
             const div = document.getElementById('speciesDataList');
+            if (!div) return;
+            
+            if (!data || data.length === 0) {
+                div.innerHTML = '<p class="text-gray-500 text-center">暂无数据</p>';
+                return;
+            }
+            
             div.innerHTML = data.map(item => `
                 <div class="data-item border-b pb-3">
                     <div class="flex justify-between items-start">
@@ -446,53 +774,121 @@
                             <p class="text-sm text-gray-600">位置: ${item.location}</p>
                             <p class="text-xs text-gray-400">日期: ${item.observation_date}</p>
                         </div>
-                        ${currentUser && !currentUser.is_admin ? `<button onclick="collectItem('物种', '${item.species_name}', '数量: ${item.count}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
+                        ${currentUser && !currentUser.is_admin ? 
+                            `<button onclick="collectItem('物种', '${item.species_name}', '数量: ${item.count}')" 
+                                class="text-yellow-500 hover:text-yellow-600">
+                                <i class="fa fa-star"></i>
+                            </button>` : ''}
                     </div>
                 </div>
             `).join('');
         }
 
         // ========== 智能问答 ==========
-        async function askQuestion() {
-            const input = document.getElementById('questionInput');
-            const question = input.value.trim();
-            if (!question) return;
+        function fillQuestion(question) {
+            if (DOM.questionInput) {
+                DOM.questionInput.value = question;
+                DOM.questionInput.focus();
+            }
+        }
+
+        // 模拟AI回答
+        async function getAIAnswer(question) {
+            // 模拟网络延迟
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
-            const qaHistory = document.getElementById('qaHistory');
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'data-item text-center text-gray-500';
-            loadingDiv.innerHTML = 'AI思考中...';
-            qaHistory.insertBefore(loadingDiv, qaHistory.firstChild);
+            const knowledgeBase = {
+                '珍稀物种': '三江源国家公园内分布有雪豹、藏羚羊、野牦牛、黑颈鹤等国家一级保护动物16种，国家二级保护动物41种。',
+                '保护措施': '三江源实施生态修复、退牧还草、生态移民、社区共管、自然教育等保护措施，累计投入超过200亿元。',
+                '中华水塔': '三江源是长江、黄河、澜沧江的发源地，年均向下游供水600亿立方米，被誉为"中华水塔"。',
+                '植被覆盖': '三江源植被覆盖率达68.5%，其中高覆盖度草地占42.3%，是亚洲最重要的水源涵养区。',
+                '气候变化': '近20年三江源气温上升1.2℃，年降水增加50mm，需加强气候适应性管理。',
+                '地理位置': '三江源位于青海省南部，青藏高原腹地，地理坐标为东经89°45′—102°23′，北纬31°39′—36°12′。',
+                '生态价值': '三江源的生态价值包括水源涵养、生物多样性保护、碳汇功能、气候调节和生态安全屏障作用。'
+            };
             
-            const answer = await getAIAnswer(question);
-            qaHistory.removeChild(loadingDiv);
+            const questionLower = question.toLowerCase();
             
-            const qaItem = document.createElement('div');
-            qaItem.className = 'data-item border-b pb-3';
-            qaItem.innerHTML = `
-                <p><strong>问:</strong> ${question}</p>
-                <p><strong>答:</strong> ${answer}</p>
-                <div class="text-right mt-2">
-                    ${currentUser && !currentUser.is_admin ? `<button onclick="collectQA('${question}', '${answer}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
-                </div>
-            `;
-            qaHistory.insertBefore(qaItem, qaHistory.firstChild);
-            
-            if (currentUser && !currentUser.is_admin) {
-                await supabase.from('qa_logs').insert({
-                    user_id: currentUser.id,
-                    question: question,
-                    answer: answer,
-                    created_at: new Date().toISOString()
-                });
+            // 关键词匹配
+            for (const [key, answer] of Object.entries(knowledgeBase)) {
+                if (questionLower.includes(key.toLowerCase())) {
+                    return answer;
+                }
             }
             
-            input.value = '';
+            // 默认回答
+            return '三江源位于青海省南部，是长江、黄河、澜沧江的发源地，被称为"中华水塔"，是中国重要的生态安全屏障。';
+        }
+
+        async function askQuestion() {
+            if (!currentUser) {
+                showToast('请先登录', 'error');
+                return;
+            }
+            
+            const question = DOM.questionInput.value.trim();
+            if (!question || question.length > 100) {
+                showToast('请输入1-100字的问题', 'error');
+                return;
+            }
+            
+            DOM.questionInput.value = '';
+            const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            
+            // 添加用户问题
+            const userHtml = `<div class="qa-item-user"><div class="qa-content-user"><div class="text-sm text-gray-500">我 ${time}</div><div class="mt-1">${question}</div></div></div>`;
+            DOM.chatBox.insertAdjacentHTML('beforeend', userHtml);
+            
+            // 添加加载动画
+            const loadingHtml = `<div class="qa-item-bot" id="loading"><div class="qa-content-bot"><div class="text-sm text-gray-500">智能助手 ${time}</div><div class="mt-1 flex items-center"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span><span class="ml-2">思考中...</span></div></div></div>`;
+            DOM.chatBox.insertAdjacentHTML('beforeend', loadingHtml);
+            DOM.chatBox.scrollTop = DOM.chatBox.scrollHeight;
+            
+            try {
+                const answer = await getAIAnswer(question);
+                
+                // 移除加载动画
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl) loadingEl.remove();
+                
+                // 添加AI回答
+                const safeQuestion = question.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeAnswer = answer.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                
+                const answerHtml = `<div class="qa-item-bot"><div class="qa-content-bot"><div class="text-sm text-gray-500">智能助手 ${time}</div><div class="mt-1">${answer}</div><i class="fa fa-star collect-btn" onclick="toggleCollect(this,'${safeQuestion}','${safeAnswer}')"></i></div></div>`;
+                DOM.chatBox.insertAdjacentHTML('beforeend', answerHtml);
+                DOM.chatBox.scrollTop = DOM.chatBox.scrollHeight;
+                
+                // 保存问答记录
+                if (!currentUser.is_admin) {
+                    await supabase.from('qa_logs').insert({
+                        user_id: currentUser.id,
+                        question: question,
+                        answer: answer,
+                        created_at: new Date().toISOString()
+                    });
+                }
+                
+                // 更新统计
+                loadStats();
+                
+            } catch (error) {
+                console.error('获取答案失败:', error);
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl) loadingEl.remove();
+                
+                const errorHtml = `<div class="qa-item-bot"><div class="qa-content-bot"><div class="text-sm text-gray-500">智能助手 ${time}</div><div class="mt-1 text-red-500">抱歉，暂时无法回答您的问题，请稍后重试。</div></div></div>`;
+                DOM.chatBox.insertAdjacentHTML('beforeend', errorHtml);
+                DOM.chatBox.scrollTop = DOM.chatBox.scrollHeight;
+            }
         }
 
         // ========== 收藏功能 ==========
         async function collectItem(type, title, content) {
-            if (!currentUser || currentUser.is_admin) return;
+            if (!currentUser || currentUser.is_admin) {
+                showToast('管理员无收藏功能', 'error');
+                return;
+            }
             
             try {
                 await supabase.from('collections').insert({
@@ -503,76 +899,200 @@
                     created_at: new Date().toISOString()
                 });
                 
-                alert('收藏成功！');
+                showToast('收藏成功！');
                 loadCollections();
                 dataCache.collections = null;
             } catch (err) {
-                alert('收藏失败: ' + err.message);
+                showToast('收藏失败: ' + err.message, 'error');
             }
-        }
-        
-        async function collectQA(question, answer) {
-            await collectItem('问答', question.substring(0, 50) + '...', answer);
         }
 
-        // ========== 加载收藏 ==========
-        async function loadCollections() {
+        async function toggleCollect(el, question, answer) {
             if (!currentUser || currentUser.is_admin) {
-                document.getElementById('collectionsList').innerHTML = '<p class="text-center text-gray-500">管理员无收藏功能</p>';
+                showToast('管理员无收藏功能', 'error');
                 return;
             }
+            
+            const decodedQuestion = question.replace(/\\'/g, "'").replace(/&quot;/g, '"');
+            const decodedAnswer = answer.replace(/\\'/g, "'").replace(/&quot;/g, '"');
+            
+            // 检查是否已收藏
+            const { data: existing } = await supabase
+                .from('collections')
+                .select('id')
+                .eq('user_id', currentUser.id)
+                .eq('title', decodedQuestion.substring(0, 50))
+                .single();
+            
+            if (existing) {
+                // 取消收藏
+                await supabase.from('collections').delete().eq('id', existing.id);
+                el.classList.remove('active');
+                showToast('取消收藏');
+            } else {
+                // 添加收藏
+                await supabase.from('collections').insert({
+                    user_id: currentUser.id,
+                    type: '问答',
+                    title: decodedQuestion.substring(0, 50),
+                    content: decodedAnswer,
+                    created_at: new Date().toISOString()
+                });
+                el.classList.add('active');
+                showToast('收藏成功！');
+            }
+            
+            loadCollections();
+            dataCache.collections = null;
+        }
+
+        async function loadCollections() {
+            if (!currentUser || currentUser.is_admin) return;
             
             if (dataCache.collections) {
                 renderCollections(dataCache.collections);
                 return;
             }
             
-            const { data, error } = await supabase
-                .from('collections')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false })
-                .limit(20);
-            
-            if (error) {
-                document.getElementById('collectionsList').innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
-                return;
+            try {
+                const { data, error } = await supabase
+                    .from('collections')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+                
+                if (error) throw error;
+                
+                dataCache.collections = data;
+                renderCollections(data);
+            } catch (error) {
+                console.error('加载收藏失败:', error);
             }
-            
-            dataCache.collections = data;
-            renderCollections(data);
         }
-        
+
         function renderCollections(data) {
-            const div = document.getElementById('collectionsList');
+            const div = document.getElementById('collectionBox');
+            if (!div) return;
             
-            if (data.length === 0) {
-                div.innerHTML = '<p class="text-center text-gray-500">暂无收藏</p>';
+            if (!data || data.length === 0) {
+                div.innerHTML = `<div class="text-center text-gray-400 py-8" id="emptyCollection"><i class="fa fa-star-o text-3xl mb-2"></i><p>暂无收藏，点击回答旁⭐收藏</p></div>`;
                 return;
             }
             
             div.innerHTML = data.map(item => `
-                <div class="data-item border-b pb-3">
-                    <h4 class="font-bold">${item.title}</h4>
-                    <p class="text-sm text-gray-600">${item.content}</p>
-                    <p class="text-xs text-gray-400 mt-1">${item.created_at}</p>
+                <div class="p-3 border-b border-gray-100 last:border-0">
+                    <div class="font-medium text-primary">${item.title}</div>
+                    <div class="mt-1 text-gray-600 text-sm">${item.content}</div>
+                    <button class="mt-2 text-xs text-red-500" onclick="deleteCollect('${item.id}')">删除</button>
                 </div>
             `).join('');
         }
 
-        // ========== 退出 ==========
-        async function logout() {
-            currentUser = null;
-            currentSession = null;
-            dataCache = { ecological: null, species: null, collections: null };
-            document.getElementById('authPage').classList.remove('hidden');
-            document.getElementById('mainPage').classList.add('hidden');
+        async function deleteCollect(id) {
+            try {
+                await supabase.from('collections').delete().eq('id', id);
+                showToast('已删除收藏');
+                loadCollections();
+                dataCache.collections = null;
+            } catch (error) {
+                showToast('删除失败: ' + error.message, 'error');
+            }
         }
 
-        // ========== 页面加载 ==========
-        document.addEventListener('DOMContentLoaded', () => {
-            initChart();
-        });
+        // ========== 加载问答历史 ==========
+        async function loadQAHistory() {
+            if (!currentUser || currentUser.is_admin) return;
+            
+            try {
+                const { data, error } = await supabase
+                    .from('qa_logs')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (error) throw error;
+                
+                DOM.chatBox.innerHTML = '';
+                
+                if (!data || data.length === 0) {
+                    DOM.chatBox.innerHTML = `<div class="text-center text-gray-400 py-8"><i class="fa fa-comment-o text-3xl mb-2"></i><p>输入问题，获取专业回答</p><p class="text-xs mt-2">专注于三江源生态保护相关问题</p></div>`;
+                    return;
+                }
+                
+                data.reverse().forEach(item => {
+                    const time = new Date(item.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    
+                    const userHtml = `<div class="qa-item-user"><div class="qa-content-user"><div class="text-sm text-gray-500">我 ${time}</div><div class="mt-1">${item.question}</div></div></div>`;
+                    DOM.chatBox.insertAdjacentHTML('beforeend', userHtml);
+                    
+                    // 检查是否已收藏
+                    const { data: existing } = supabase
+                        .from('collections')
+                        .select('id')
+                        .eq('user_id', currentUser.id)
+                        .eq('title', item.question.substring(0, 50))
+                        .single();
+                    
+                    const collectClass = existing ? 'collect-btn active' : 'collect-btn';
+                    const safeQuestion = item.question.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const safeAnswer = item.answer.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    
+                    const answerHtml = `<div class="qa-item-bot"><div class="qa-content-bot"><div class="text-sm text-gray-500">智能助手 ${time}</div><div class="mt-1">${item.answer}</div><i class="fa fa-star ${collectClass}" onclick="toggleCollect(this,'${safeQuestion}','${safeAnswer}')"></i></div></div>`;
+                    DOM.chatBox.insertAdjacentHTML('beforeend', answerHtml);
+                });
+                
+                DOM.chatBox.scrollTop = DOM.chatBox.scrollHeight;
+                
+            } catch (error) {
+                console.error('加载问答历史失败:', error);
+            }
+        }
+
+        // ========== 初始化 ==========
+        async function initApp() {
+            // 绑定事件
+            DOM.loginTab?.addEventListener('click', () => switchTab('login'));
+            DOM.registerTab?.addEventListener('click', () => switchTab('register'));
+            DOM.loginBtn?.addEventListener('click', login);
+            DOM.regBtn?.addEventListener('click', register);
+            
+            // 为输入框添加Enter键支持
+            document.getElementById('loginPwd')?.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') login();
+            });
+            
+            document.getElementById('regConfirmPwd')?.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') register();
+            });
+            
+            DOM.questionInput?.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') askQuestion();
+            });
+            
+            // 检查是否已登录（可以从localStorage恢复）
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    await showMainApp();
+                } catch (error) {
+                    console.error('恢复用户登录状态失败:', error);
+                    localStorage.removeItem('currentUser');
+                }
+            }
+            
+            // 页面卸载时保存登录状态
+            window.addEventListener('beforeunload', function() {
+                if (currentUser) {
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                }
+            });
+        }
+
+        // 页面加载完成时初始化
+        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
