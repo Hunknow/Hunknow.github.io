@@ -261,4 +261,415 @@
                 loginForm.classList.remove('hidden');
                 registerForm.classList.add('hidden');
             } else {
-                registerTab.classList.add('border-primary', 'text-primary
+                registerTab.classList.add('border-primary', 'text-primary');
+                registerTab.classList.remove('border-gray-200', 'text-gray-500');
+                loginTab.classList.remove('border-primary', 'text-primary');
+                loginTab.classList.add('border-gray-200', 'text-gray-500');
+                registerForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+            }
+        }
+
+        // ========== 登录 ==========
+        async function loginUser() {
+            const phone = document.getElementById('loginPhone').value.trim();
+            const password = document.getElementById('loginPwd').value.trim();
+            const messageDiv = document.getElementById('authMessage');
+            
+            // 管理员登录
+            if (phone === '18597123311' && password === 'Hm123321') {
+                currentUser = { id: '00000000-0000-0000-0000-000000000000', phone: '18597123311', name: '管理员', is_admin: true };
+                currentSession = { id: 'session-admin', user_id: '00000000-0000-0000-0000-000000000000' };
+                showMainApp();
+                return;
+            }
+            
+            // 普通用户登录
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('phone', phone)
+                    .eq('password_hash', password)
+                    .single();
+                
+                if (error || !data) {
+                    messageDiv.innerHTML = '<p class="text-red text-center">手机号或密码错误</p>';
+                    return;
+                }
+                
+                currentUser = data;
+                
+                // 创建会话记录
+                const { data: sessionData, error: sessionError } = await supabase
+                    .from('user_sessions')
+                    .insert({
+                        user_id: data.id,
+                        login_time: new Date().toISOString(),
+                        ip_address: await getClientIP(),
+                        user_agent: navigator.userAgent
+                    })
+                    .select()
+                    .single();
+                
+                if (sessionError) {
+                    console.warn('会话记录失败:', sessionError);
+                } else {
+                    currentSession = sessionData;
+                }
+                
+                showMainApp();
+                messageDiv.innerHTML = '<p class="text-green text-center">登录成功！</p>';
+                
+            } catch (err) {
+                messageDiv.innerHTML = `<p class="text-red text-center">登录失败: ${err.message}</p>`;
+            }
+        }
+
+        // ========== 注册 ==========
+        async function registerUser() {
+            const phone = document.getElementById('regPhone').value.trim();
+            const name = document.getElementById('regName').value.trim();
+            const password = document.getElementById('regPwd').value.trim();
+            const confirm = document.getElementById('regConfirmPwd').value.trim();
+            const messageDiv = document.getElementById('authMessage');
+            
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                messageDiv.innerHTML = '<p class="text-red text-center">请输入有效的手机号</p>';
+                return;
+            }
+            
+            if (password !== confirm) {
+                messageDiv.innerHTML = '<p class="text-red text-center">两次密码不一致</p>';
+                return;
+            }
+            
+            try {
+                // 检查手机号是否存在
+                const { data: existing, error: checkError } = await supabase
+                    .from('users')
+                    .select('phone')
+                    .eq('phone', phone);
+                
+                if (checkError) {
+                    messageDiv.innerHTML = '<p class="text-red text-center">检查失败，请重试</p>';
+                    return;
+                }
+                
+                if (existing && existing.length > 0) {
+                    messageDiv.innerHTML = '<p class="text-red text-center">该手机号已注册</p>';
+                    return;
+                }
+                
+                // 创建用户
+                const { data, error } = await supabase
+                    .from('users')
+                    .insert({
+                        phone: phone,
+                        name: name,
+                        password_hash: password,
+                        is_admin: false,
+                        created_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+                
+                if (error) {
+                    messageDiv.innerHTML = `<p class="text-red text-center">注册失败: ${error.message}</p>`;
+                    return;
+                }
+                
+                messageDiv.innerHTML = '<p class="text-green text-center">注册成功！正在跳转登录...</p>';
+                setTimeout(() => {
+                    switchTab('login');
+                    document.getElementById('regPhone').value = '';
+                    document.getElementById('regName').value = '';
+                    document.getElementById('regPwd').value = '';
+                    document.getElementById('regConfirmPwd').value = '';
+                }, 1500);
+                
+            } catch (err) {
+                messageDiv.innerHTML = `<p class="text-red text-center">注册失败: ${err.message}</p>`;
+            }
+        }
+
+        // ========== 显示主应用 ==========
+        async function showMainApp() {
+            document.getElementById('authPage').classList.add('hidden');
+            document.getElementById('mainPage').classList.remove('hidden');
+            document.getElementById('userNameDisplay').textContent = currentUser.name;
+            
+            // 管理员不显示收藏功能
+            if (currentUser.is_admin) {
+                document.getElementById('collectionsSection').classList.add('hidden');
+            } else {
+                document.getElementById('collectionsSection').classList.remove('hidden');
+            }
+            
+            // 加载数据
+            await Promise.all([
+                loadStats(),
+                loadEcologicalData(),
+                loadSpeciesData(),
+                currentUser.is_admin ? Promise.resolve() : loadCollections(),
+                loadChartData()
+            ]);
+        }
+
+        // ========== 加载统计 ==========
+        async function loadStats() {
+            const { count: ecoCount } = await supabase.from('ecological_data').select('*', { count: 'exact', head: true });
+            const { count: speciesCount } = await supabase.from('species_records').select('*', { count: 'exact', head: true });
+            const { count: qaCount } = await supabase.from('qa_logs').select('*', { count: 'exact', head: true });
+            
+            document.getElementById('statsEcological').textContent = ecoCount;
+            document.getElementById('statsSpecies').textContent = speciesCount;
+            document.getElementById('statsQA').textContent = qaCount;
+        }
+
+        // ========== 加载生态数据 ==========
+        async function loadEcologicalData() {
+            // 从缓存获取
+            if (dataCache.ecological) {
+                renderEcologicalData(dataCache.ecological);
+                return;
+            }
+            
+            const { data, error } = await supabase.from('ecological_data').select('*').limit(10);
+            
+            if (error) {
+                document.getElementById('ecologicalDataList').innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
+                return;
+            }
+            
+            dataCache.ecological = data; // 存入缓存
+            renderEcologicalData(data);
+        }
+        
+        function renderEcologicalData(data) {
+            const div = document.getElementById('ecologicalDataList');
+            div.innerHTML = data.map(item => `
+                <div class="data-item">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-primary">${item.data_type}</h4>
+                            <p class="text-sm text-gray-600">位置: ${item.location}</p>
+                            <p class="text-sm text-gray-600">数值: ${item.value} ${item.unit}</p>
+                            <p class="text-xs text-gray-400">日期: ${item.record_date}</p>
+                        </div>
+                        ${currentUser && !currentUser.is_admin ? `<button onclick="collectItem('生态数据', '${item.data_type}', '${item.location}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ========== 加载物种数据 ==========
+        async function loadSpeciesData() {
+            if (dataCache.species) {
+                renderSpeciesData(dataCache.species);
+                return;
+            }
+            
+            const { data, error } = await supabase.from('species_records').select('*').limit(10);
+            
+            if (error) {
+                document.getElementById('speciesDataList').innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
+                return;
+            }
+            
+            dataCache.species = data;
+            renderSpeciesData(data);
+        }
+        
+        function renderSpeciesData(data) {
+            const div = document.getElementById('speciesDataList');
+            div.innerHTML = data.map(item => `
+                <div class="data-item">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-primary">${item.species_name}</h4>
+                            <p class="text-sm text-gray-600">数量: ${item.count}</p>
+                            <p class="text-sm text-gray-600">位置: ${item.location}</p>
+                            <p class="text-xs text-gray-400">日期: ${item.observation_date}</p>
+                        </div>
+                        ${currentUser && !currentUser.is_admin ? `<button onclick="collectItem('物种', '${item.species_name}', '数量: ${item.count}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ========== 智能问答（接入AI）==========
+        async function askQuestion() {
+            const input = document.getElementById('questionInput');
+            const question = input.value.trim();
+            if (!question) return;
+            
+            // 显示加载动画
+            const qaHistory = document.getElementById('qaHistory');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'data-item text-center text-gray-500';
+            loadingDiv.innerHTML = 'AI思考中...';
+            qaHistory.insertBefore(loadingDiv, qaHistory.firstChild);
+            
+            // 调用AI
+            const answer = await getAIAnswer(question);
+            
+            // 移除加载动画
+            qaHistory.removeChild(loadingDiv);
+            
+            // 显示回答
+            const qaItem = document.createElement('div');
+            qaItem.className = 'data-item';
+            qaItem.innerHTML = `
+                <p><strong>问:</strong> ${question}</p>
+                <p><strong>答:</strong> ${answer}</p>
+                <div class="text-right mt-2">
+                    ${currentUser && !currentUser.is_admin ? `<button onclick="collectQA('${question}', '${answer}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
+                </div>
+            `;
+            qaHistory.insertBefore(qaItem, qaHistory.firstChild);
+            
+            // 保存到qa_logs（如果已登录且不是管理员）
+            if (currentUser && !currentUser.is_admin) {
+                await supabase.from('qa_logs').insert({
+                    user_id: currentUser.id,
+                    question: question,
+                    answer: answer,
+                    created_at: new Date().toISOString()
+                });
+            }
+            
+            input.value = '';
+        }
+
+        // ========== 收藏功能 ==========
+        async function collectItem(type, title, content) {
+            if (!currentUser || currentUser.is_admin) return;
+            
+            try {
+                await supabase.from('collections').insert({
+                    user_id: currentUser.id,
+                    type: type,
+                    title: title,
+                    content: content,
+                    created_at: new Date().toISOString()
+                });
+                
+                alert('收藏成功！');
+                loadCollections();
+                // 更新缓存
+                dataCache.collections = null;
+            } catch (err) {
+                alert('收藏失败: ' + err.message);
+            }
+        }
+        
+        async function collectQA(question, answer) {
+            await collectItem('问答', question.substring(0, 50) + '...', answer);
+        }
+
+        // ========== 加载收藏 ==========
+        async function loadCollections() {
+            if (!currentUser || currentUser.is_admin) {
+                document.getElementById('collectionsList').innerHTML = '<p class="text-center text-gray-500">管理员无收藏功能</p>';
+                return;
+            }
+            
+            // 从缓存获取
+            if (dataCache.collections) {
+                renderCollections(dataCache.collections);
+                return;
+            }
+            
+            const { data, error } = await supabase
+                .from('collections')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('created_at', { ascending: false })
+                .limit(20);
+            
+            if (error) {
+                document.getElementById('collectionsList').innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
+                return;
+            }
+            
+            dataCache.collections = data;
+            renderCollections(data);
+        }
+        
+        function renderCollections(data) {
+            const div = document.getElementById('collectionsList');
+            
+            if (data.length === 0) {
+                div.innerHTML = '<p class="text-center text-gray-500">暂无收藏</p>';
+                return;
+            }
+            
+            div.innerHTML = data.map(item => `
+                <div class="data-item">
+                    <h4 class="font-bold">${item.title}</h4>
+                    <p class="text-sm text-gray-600">${item.content}</p>
+                    <p class="text-xs text-gray-400 mt-1">${item.created_at}</p>
+                </div>
+            `).join('');
+        }
+
+        // ========== 加载图表数据 ==========
+        async function loadChartData() {
+            const { data, error } = await supabase
+                .from('ecological_data')
+                .select('record_date, data_type, value')
+                .order('record_date', { ascending: true })
+                .limit(30);
+            
+            if (error) {
+                console.error('图表数据加载失败:', error);
+                return;
+            }
+            
+            // 按日期和数据类型分组
+            const dates = [...new Set(data.map(item => item.record_date))];
+            const vegetationData = data.filter(item => item.data_type === '植被覆盖度').map(item => item.value);
+            const phData = data.filter(item => item.data_type === '水质PH值').map(item => item.value);
+            
+            // 填充图表
+            ecologicalChart.data.labels = dates;
+            ecologicalChart.data.datasets[0].data = vegetationData;
+            ecologicalChart.data.datasets[1].data = phData;
+            ecologicalChart.update();
+        }
+
+        // ========== 退出 ==========
+        async function logout() {
+            if (currentSession && currentSession.id !== 'session-admin') {
+                await supabase
+                    .from('user_sessions')
+                    .update({ logout_time: new Date().toISOString() })
+                    .eq('id', currentSession.id);
+            }
+            
+            currentUser = null;
+            currentSession = null;
+            dataCache = { ecological: null, species: null, collections: null };
+            document.getElementById('authPage').classList.remove('hidden');
+            document.getElementById('mainPage').classList.add('hidden');
+        }
+
+        // ========== 工具函数 ==========
+        async function getClientIP() {
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                return data.ip || '未知';
+            } catch {
+                return '未知';
+            }
+        }
+
+        // ========== 页面加载 ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            initChart();
+        });
+    </script>
+</body>
+</html>
