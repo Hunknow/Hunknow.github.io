@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>三江源生态智能问答平台</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -114,8 +113,8 @@
                 <div id="qaHistory" class="mt-6 space-y-4"></div>
             </div>
 
-            <!-- 收藏管理 -->
-            <div class="bg-white rounded-2xl shadow-lg p-6">
+            <!-- 收藏管理（管理员不显示） -->
+            <div id="collectionsSection" class="bg-white rounded-2xl shadow-lg p-6">
                 <h2 class="text-xl font-bold text-primary mb-4">我的收藏</h2>
                 <div id="collectionsList"></div>
             </div>
@@ -161,7 +160,7 @@
             const password = document.getElementById('loginPwd').value.trim();
             const messageDiv = document.getElementById('authMessage');
             
-            // 管理员登录
+            // 管理员登录（硬编码）
             if (phone === '18597123311' && password === 'Hm123321') {
                 currentUser = { id: 'admin', phone: '18597123311', name: '管理员', is_admin: true };
                 currentSession = { id: 'session-admin', user_id: 'admin' };
@@ -178,15 +177,21 @@
                     .eq('password_hash', password)
                     .single();
                 
-                if (error || !data) {
+                if (error) {
+                    console.error('登录查询错误:', error);
+                    messageDiv.innerHTML = '<p class="text-red text-center">手机号或密码错误</p>';
+                    return;
+                }
+                
+                if (!data) {
                     messageDiv.innerHTML = '<p class="text-red text-center">手机号或密码错误</p>';
                     return;
                 }
                 
                 currentUser = data;
                 
-                // 创建会话记录
-                const { data: sessionData } = await supabase
+                // 创建会话记录（仅普通用户）
+                const { data: sessionData, error: sessionError } = await supabase
                     .from('user_sessions')
                     .insert({
                         user_id: data.id,
@@ -197,11 +202,17 @@
                     .select()
                     .single();
                 
-                currentSession = sessionData;
+                if (sessionError) {
+                    console.warn('会话记录失败:', sessionError);
+                } else {
+                    currentSession = sessionData;
+                }
+                
                 showMainApp();
                 messageDiv.innerHTML = '<p class="text-green text-center">登录成功！</p>';
                 
             } catch (err) {
+                console.error('登录异常:', err);
                 messageDiv.innerHTML = `<p class="text-red text-center">登录失败: ${err.message}</p>`;
             }
         }
@@ -214,6 +225,7 @@
             const confirm = document.getElementById('regConfirmPwd').value.trim();
             const messageDiv = document.getElementById('authMessage');
             
+            // 验证
             if (!/^1[3-9]\d{9}$/.test(phone)) {
                 messageDiv.innerHTML = '<p class="text-red text-center">请输入有效的手机号</p>';
                 return;
@@ -225,14 +237,19 @@
             }
             
             try {
-                // 检查手机号是否存在
-                const { data: existing } = await supabase
+                // 检查手机号是否存在（修复：正确处理查询结果）
+                const { data: existing, error: checkError } = await supabase
                     .from('users')
                     .select('phone')
-                    .eq('phone', phone)
-                    .single();
+                    .eq('phone', phone);
                 
-                if (existing) {
+                if (checkError) {
+                    console.error('检查手机号错误:', checkError);
+                    messageDiv.innerHTML = '<p class="text-red text-center">检查失败，请重试</p>';
+                    return;
+                }
+                
+                if (existing && existing.length > 0) {
                     messageDiv.innerHTML = '<p class="text-red text-center">该手机号已注册</p>';
                     return;
                 }
@@ -243,7 +260,7 @@
                     .insert({
                         phone: phone,
                         name: name,
-                        password_hash: password,
+                        password_hash: password, // 明文存储，简化部署
                         is_admin: false,
                         created_at: new Date().toISOString()
                     })
@@ -265,6 +282,7 @@
                 }, 1500);
                 
             } catch (err) {
+                console.error('注册异常:', err);
                 messageDiv.innerHTML = `<p class="text-red text-center">注册失败: ${err.message}</p>`;
             }
         }
@@ -275,11 +293,18 @@
             document.getElementById('mainPage').classList.remove('hidden');
             document.getElementById('userNameDisplay').textContent = currentUser.name;
             
-            // 并行加载所有数据
+            // 管理员不显示收藏功能
+            if (currentUser.is_admin) {
+                document.getElementById('collectionsSection').classList.add('hidden');
+            } else {
+                document.getElementById('collectionsSection').classList.remove('hidden');
+            }
+            
+            // 并行加载数据
             await Promise.all([
                 loadEcologicalData(),
                 loadSpeciesData(),
-                loadCollections(),
+                currentUser.is_admin ? Promise.resolve() : loadCollections(),
                 loadUserStats()
             ]);
         }
@@ -303,7 +328,7 @@
                             <p class="text-sm text-gray-600">数值: ${item.value} ${item.unit}</p>
                             <p class="text-xs text-gray-400">日期: ${item.record_date}</p>
                         </div>
-                        ${currentUser ? `<button onclick="collectItem('生态数据', '${item.data_type}', '${item.location}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
+                        ${currentUser && !currentUser.is_admin ? `<button onclick="collectItem('生态数据', '${item.data_type}', '${item.location}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
                     </div>
                 </div>
             `).join('');
@@ -328,7 +353,7 @@
                             <p class="text-sm text-gray-600">位置: ${item.location}</p>
                             <p class="text-xs text-gray-400">日期: ${item.observation_date}</p>
                         </div>
-                        ${currentUser ? `<button onclick="collectItem('物种', '${item.species_name}', '数量: ${item.count}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
+                        ${currentUser && !currentUser.is_admin ? `<button onclick="collectItem('物种', '${item.species_name}', '数量: ${item.count}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
                     </div>
                 </div>
             `).join('');
@@ -350,13 +375,13 @@
                 <p><strong>问:</strong> ${question}</p>
                 <p><strong>答:</strong> ${answer}</p>
                 <div class="text-right mt-2">
-                    ${currentUser ? `<button onclick="collectQA('${question}', '${answer}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
+                    ${currentUser && !currentUser.is_admin ? `<button onclick="collectQA('${question}', '${answer}')" class="text-yellow-500 hover:text-yellow-600">★ 收藏</button>` : ''}
                 </div>
             `;
             qaHistory.insertBefore(qaItem, qaHistory.firstChild);
             
-            // 保存到qa_logs（如果已登录）
-            if (currentUser) {
+            // 保存到qa_logs（如果已登录且不是管理员）
+            if (currentUser && !currentUser.is_admin) {
                 await supabase.from('qa_logs').insert({
                     user_id: currentUser.id,
                     question: question,
@@ -370,7 +395,7 @@
 
         // ========== 收藏功能 ==========
         async function collectItem(type, title, content) {
-            if (!currentUser) return;
+            if (!currentUser || currentUser.is_admin) return;
             
             try {
                 await supabase.from('collections').insert({
@@ -394,7 +419,10 @@
 
         // ========== 加载收藏 ==========
         async function loadCollections() {
-            if (!currentUser) return;
+            if (!currentUser || currentUser.is_admin) {
+                document.getElementById('collectionsList').innerHTML = '<p class="text-center text-gray-500">管理员无收藏功能</p>';
+                return;
+            }
             
             const { data, error } = await supabase
                 .from('collections')
@@ -406,7 +434,7 @@
             const div = document.getElementById('collectionsList');
             
             if (error) {
-                div.innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
+                div.innerHTML = `<p class="text-red">加载收藏失败: ${error.message}</p>`;
                 return;
             }
             
@@ -426,7 +454,7 @@
 
         // ========== 加载用户统计 ==========
         async function loadUserStats() {
-            if (!currentUser) return;
+            if (!currentUser || currentUser.is_admin) return;
             
             // 问答数量
             const { count: qaCount } = await supabase
@@ -445,7 +473,7 @@
 
         // ========== 退出 ==========
         async function logout() {
-            if (currentSession) {
+            if (currentSession && currentSession.id !== 'session-admin') {
                 await supabase
                     .from('user_sessions')
                     .update({ logout_time: new Date().toISOString() })
