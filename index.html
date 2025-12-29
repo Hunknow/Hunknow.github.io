@@ -139,7 +139,7 @@
             </div>
 
             <!-- 收藏管理 -->
-            <div class="bg-white rounded-2xl shadow-lg p-6">
+            <div id="collectionsSection" class="bg-white rounded-2xl shadow-lg p-6">
                 <h2 class="text-xl font-bold text-primary mb-4">我的收藏</h2>
                 <div id="collectionsList"></div>
             </div>
@@ -154,18 +154,15 @@
         
         // ========== AI配置（百度文心一言）==========
         const AI_CONFIG = {
-            // 百度AI API配置（需申请，这里用模拟）
-            apiKey: 'your-baidu-api-key', // 在https://console.bce.baidu.com/ai申请
+            apiKey: 'your-baidu-api-key',
             secretKey: 'your-baidu-secret-key',
             endpoint: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions'
         };
         
-        // 模拟AI回答（生产环境替换为真实API调用）
+        // 模拟AI回答
         async function getAIAnswer(question) {
-            // 模拟延迟
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // 知识库匹配
             const knowledgeBase = {
                 '珍稀物种': '三江源国家公园内分布有雪豹、藏羚羊、野牦牛、黑颈鹤等国家一级保护动物16种，国家二级保护动物41种。',
                 '保护措施': '三江源实施生态修复、退牧还草、生态移民、社区共管、自然教育等保护措施，累计投入超过200亿元。',
@@ -184,7 +181,6 @@
         // ========== 图表配置 ==========
         let ecologicalChart = null;
         
-        // 初始化图表
         function initChart() {
             const ctx = document.getElementById('ecologicalChart').getContext('2d');
             ecologicalChart = new Chart(ctx, {
@@ -207,17 +203,12 @@
                 },
                 options: {
                     responsive: true,
-                    plugins: {
-                        legend: { display: true, position: 'top' }
-                    },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
+                    plugins: { legend: { display: true, position: 'top' } },
+                    scales: { y: { beginAtZero: true } }
                 }
             });
         }
         
-        // 加载图表数据
         async function loadChartData() {
             const { data, error } = await supabase
                 .from('ecological_data')
@@ -225,12 +216,8 @@
                 .order('record_date', { ascending: true })
                 .limit(30);
             
-            if (error) {
-                console.error('图表数据加载失败:', error);
-                return;
-            }
+            if (error) return;
             
-            // 按日期和数据类型分组
             const dates = [...new Set(data.map(item => item.record_date))];
             const vegetationData = data.filter(item => item.data_type === '植被覆盖度').map(item => item.value);
             const phData = data.filter(item => item.data_type === '水质PH值').map(item => item.value);
@@ -278,8 +265,8 @@
             
             // 管理员登录
             if (phone === '18597123311' && password === 'Hm123321') {
-                currentUser = { id: '00000000-0000-0000-0000-000000000000', phone: '18597123311', name: '管理员', is_admin: true };
-                currentSession = { id: 'session-admin', user_id: '00000000-0000-0000-0000-000000000000' };
+                currentUser = { id: 'admin', phone: '18597123311', name: '管理员', is_admin: true };
+                currentSession = { id: 'session-admin', user_id: 'admin' };
                 showMainApp();
                 return;
             }
@@ -299,25 +286,6 @@
                 }
                 
                 currentUser = data;
-                
-                // 创建会话记录
-                const { data: sessionData, error: sessionError } = await supabase
-                    .from('user_sessions')
-                    .insert({
-                        user_id: data.id,
-                        login_time: new Date().toISOString(),
-                        ip_address: await getClientIP(),
-                        user_agent: navigator.userAgent
-                    })
-                    .select()
-                    .single();
-                
-                if (sessionError) {
-                    console.warn('会话记录失败:', sessionError);
-                } else {
-                    currentSession = sessionData;
-                }
-                
                 showMainApp();
                 messageDiv.innerHTML = '<p class="text-green text-center">登录成功！</p>';
                 
@@ -345,24 +313,17 @@
             }
             
             try {
-                // 检查手机号是否存在
-                const { data: existing, error: checkError } = await supabase
+                const { data: existing } = await supabase
                     .from('users')
                     .select('phone')
                     .eq('phone', phone);
-                
-                if (checkError) {
-                    messageDiv.innerHTML = '<p class="text-red text-center">检查失败，请重试</p>';
-                    return;
-                }
                 
                 if (existing && existing.length > 0) {
                     messageDiv.innerHTML = '<p class="text-red text-center">该手机号已注册</p>';
                     return;
                 }
                 
-                // 创建用户
-                const { data, error } = await supabase
+                const { data } = await supabase
                     .from('users')
                     .insert({
                         phone: phone,
@@ -373,11 +334,6 @@
                     })
                     .select()
                     .single();
-                
-                if (error) {
-                    messageDiv.innerHTML = `<p class="text-red text-center">注册失败: ${error.message}</p>`;
-                    return;
-                }
                 
                 messageDiv.innerHTML = '<p class="text-green text-center">注册成功！正在跳转登录...</p>';
                 setTimeout(() => {
@@ -406,7 +362,6 @@
                 document.getElementById('collectionsSection').classList.remove('hidden');
             }
             
-            // 加载数据
             await Promise.all([
                 loadStats(),
                 loadEcologicalData(),
@@ -429,7 +384,6 @@
 
         // ========== 加载生态数据 ==========
         async function loadEcologicalData() {
-            // 从缓存获取
             if (dataCache.ecological) {
                 renderEcologicalData(dataCache.ecological);
                 return;
@@ -442,14 +396,14 @@
                 return;
             }
             
-            dataCache.ecological = data; // 存入缓存
+            dataCache.ecological = data;
             renderEcologicalData(data);
         }
         
         function renderEcologicalData(data) {
             const div = document.getElementById('ecologicalDataList');
             div.innerHTML = data.map(item => `
-                <div class="data-item">
+                <div class="data-item border-b pb-3">
                     <div class="flex justify-between items-start">
                         <div>
                             <h4 class="font-bold text-primary">${item.data_type}</h4>
@@ -484,7 +438,7 @@
         function renderSpeciesData(data) {
             const div = document.getElementById('speciesDataList');
             div.innerHTML = data.map(item => `
-                <div class="data-item">
+                <div class="data-item border-b pb-3">
                     <div class="flex justify-between items-start">
                         <div>
                             <h4 class="font-bold text-primary">${item.species_name}</h4>
@@ -498,28 +452,23 @@
             `).join('');
         }
 
-        // ========== 智能问答（接入AI）==========
+        // ========== 智能问答 ==========
         async function askQuestion() {
             const input = document.getElementById('questionInput');
             const question = input.value.trim();
             if (!question) return;
             
-            // 显示加载动画
             const qaHistory = document.getElementById('qaHistory');
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'data-item text-center text-gray-500';
             loadingDiv.innerHTML = 'AI思考中...';
             qaHistory.insertBefore(loadingDiv, qaHistory.firstChild);
             
-            // 调用AI
             const answer = await getAIAnswer(question);
-            
-            // 移除加载动画
             qaHistory.removeChild(loadingDiv);
             
-            // 显示回答
             const qaItem = document.createElement('div');
-            qaItem.className = 'data-item';
+            qaItem.className = 'data-item border-b pb-3';
             qaItem.innerHTML = `
                 <p><strong>问:</strong> ${question}</p>
                 <p><strong>答:</strong> ${answer}</p>
@@ -529,7 +478,6 @@
             `;
             qaHistory.insertBefore(qaItem, qaHistory.firstChild);
             
-            // 保存到qa_logs（如果已登录且不是管理员）
             if (currentUser && !currentUser.is_admin) {
                 await supabase.from('qa_logs').insert({
                     user_id: currentUser.id,
@@ -557,7 +505,6 @@
                 
                 alert('收藏成功！');
                 loadCollections();
-                // 更新缓存
                 dataCache.collections = null;
             } catch (err) {
                 alert('收藏失败: ' + err.message);
@@ -575,7 +522,6 @@
                 return;
             }
             
-            // 从缓存获取
             if (dataCache.collections) {
                 renderCollections(dataCache.collections);
                 return;
@@ -606,7 +552,7 @@
             }
             
             div.innerHTML = data.map(item => `
-                <div class="data-item">
+                <div class="data-item border-b pb-3">
                     <h4 class="font-bold">${item.title}</h4>
                     <p class="text-sm text-gray-600">${item.content}</p>
                     <p class="text-xs text-gray-400 mt-1">${item.created_at}</p>
@@ -614,56 +560,13 @@
             `).join('');
         }
 
-        // ========== 加载图表数据 ==========
-        async function loadChartData() {
-            const { data, error } = await supabase
-                .from('ecological_data')
-                .select('record_date, data_type, value')
-                .order('record_date', { ascending: true })
-                .limit(30);
-            
-            if (error) {
-                console.error('图表数据加载失败:', error);
-                return;
-            }
-            
-            // 按日期和数据类型分组
-            const dates = [...new Set(data.map(item => item.record_date))];
-            const vegetationData = data.filter(item => item.data_type === '植被覆盖度').map(item => item.value);
-            const phData = data.filter(item => item.data_type === '水质PH值').map(item => item.value);
-            
-            // 填充图表
-            ecologicalChart.data.labels = dates;
-            ecologicalChart.data.datasets[0].data = vegetationData;
-            ecologicalChart.data.datasets[1].data = phData;
-            ecologicalChart.update();
-        }
-
         // ========== 退出 ==========
         async function logout() {
-            if (currentSession && currentSession.id !== 'session-admin') {
-                await supabase
-                    .from('user_sessions')
-                    .update({ logout_time: new Date().toISOString() })
-                    .eq('id', currentSession.id);
-            }
-            
             currentUser = null;
             currentSession = null;
             dataCache = { ecological: null, species: null, collections: null };
             document.getElementById('authPage').classList.remove('hidden');
             document.getElementById('mainPage').classList.add('hidden');
-        }
-
-        // ========== 工具函数 ==========
-        async function getClientIP() {
-            try {
-                const res = await fetch('https://api.ipify.org?format=json');
-                const data = await res.json();
-                return data.ip || '未知';
-            } catch {
-                return '未知';
-            }
         }
 
         // ========== 页面加载 ==========
