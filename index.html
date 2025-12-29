@@ -2,87 +2,51 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>三江源生态智能问答平台</title>
+    <title>三江源平台（简化版）</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 50%, #c8e6c9 100%); min-height: 100vh; }
-        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #f0f0f0; min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
         .card { background: white; border-radius: 10px; padding: 30px; margin: 20px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn { padding: 12px 24px; background: #0E7C7B; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .btn { padding: 12px 24px; background: #0E7C7B; color: white; border: none; border-radius: 5px; cursor: pointer; }
         .btn:hover { background: #0b6a69; }
-        .input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
+        .input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
         .hidden { display: none; }
         .text-center { text-align: center; }
         .text-red { color: #e53e3e; }
         .text-green { color: #38a169; }
         .mb-4 { margin-bottom: 16px; }
         .mt-4 { margin-top: 16px; }
-        .flex { display: flex; gap: 10px; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .small-text { font-size: 14px; color: #666; }
-        .data-item { padding: 15px; border-left: 4px solid #0E7C7B; margin: 10px 0; background: #f8f9fa; }
+        .flex { display: flex; justify-content: space-between; align-items: center; }
+        .data-item { padding: 15px; border-left: 4px solid #0E7C7B; margin: 10px 0; background: #f9f9f9; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <!-- 认证区域 -->
+        <!-- 登录区域 -->
         <div id="authSection" class="card">
             <h1 class="text-center mb-4">三江源生态智能问答平台</h1>
             
-            <div class="text-center mb-4">
-                <button class="btn" onclick="switchTab('login')">登录</button>
-                <button class="btn" onclick="switchTab('register')">注册</button>
+            <h2 class="text-center mb-4">用户登录</h2>
+            <div class="mb-4">
+                <label>手机号</label>
+                <input type="tel" id="loginPhone" class="input" placeholder="18597123311（管理员）">
             </div>
-            
-            <!-- 登录表单 -->
-            <div id="loginForm">
-                <h2 class="text-center mb-4">用户登录</h2>
-                <div class="mb-4">
-                    <label>手机号</label>
-                    <input type="tel" id="loginPhone" class="input" placeholder="请输入11位手机号">
-                </div>
-                <div class="mb-4">
-                    <label>密码</label>
-                    <input type="password" id="loginPwd" class="input" placeholder="请输入密码（≥8位）">
-                </div>
-                <button class="btn" style="width: 100%;" onclick="loginUser()">登录</button>
-                <p class="small-text mt-4 text-center">管理员：18597123311 / Hm123321</p>
+            <div class="mb-4">
+                <label>密码</label>
+                <input type="password" id="loginPwd" class="input" placeholder="Hm123321（管理员密码）">
             </div>
-            
-            <!-- 注册表单 -->
-            <div id="registerForm" class="hidden">
-                <h2 class="text-center mb-4">用户注册</h2>
-                <div class="mb-4">
-                    <label>手机号</label>
-                    <input type="tel" id="regPhone" class="input" placeholder="请输入11位手机号">
-                </div>
-                <div class="mb-4">
-                    <label>用户名</label>
-                    <input type="text" id="regName" class="input" placeholder="请输入用户名">
-                </div>
-                <div class="mb-4">
-                    <label>密码</label>
-                    <input type="password" id="regPwd" class="input" placeholder="请输入密码（≥8位）">
-                </div>
-                <div class="mb-4">
-                    <label>确认密码</label>
-                    <input type="password" id="regConfirmPwd" class="input" placeholder="请再次输入密码">
-                </div>
-                <button class="btn" style="width: 100%;" onclick="registerUser()">注册</button>
-            </div>
+            <button class="btn" style="width: 100%;" onclick="loginUser()">登录</button>
             
             <div id="authMessage" class="mt-4 text-center"></div>
         </div>
 
         <!-- 主应用区域 -->
         <div id="appSection" class="card hidden">
-            <h2 class="text-center mb-4">三江源生态数据平台</h2>
-            
             <div class="flex mb-4">
-                <div style="flex: 1;"><h3>欢迎 <span id="userNameDisplay"></span></h3></div>
-                <div><button class="btn" onclick="logout()">退出</button></div>
+                <h3>欢迎 <span id="userNameDisplay"></span></h3>
+                <button class="btn" onclick="logout()">退出</button>
             </div>
             
             <!-- 生态数据 -->
@@ -95,7 +59,7 @@
             
             <!-- 智能问答 -->
             <h3 class="mt-4 mb-4">智能问答</h3>
-            <textarea id="questionInput" class="input" rows="3" placeholder="请输入关于三江源生态的问题..."></textarea>
+            <textarea id="questionInput" class="input" rows="3" placeholder="请输入问题..."></textarea>
             <button class="btn mt-4" onclick="askQuestion()">提问</button>
             <div id="qaHistory" class="mt-4"></div>
         </div>
@@ -105,25 +69,7 @@
         // ========== Supabase配置 ==========
         const SUPABASE_URL = 'https://pnakeholshmrtwctzqcb.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_tVf76wqdUIvhiNUymxKHEA_FAMmDvf3';
-        
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
-        // ========== 全局变量 ==========
-        let currentUser = null;
-        
-        // ========== 标签切换 ==========
-        function switchTab(tab) {
-            const loginForm = document.getElementById('loginForm');
-            const registerForm = document.getElementById('registerForm');
-            
-            if (tab === 'login') {
-                loginForm.classList.remove('hidden');
-                registerForm.classList.add('hidden');
-            } else {
-                loginForm.classList.add('hidden');
-                registerForm.classList.remove('hidden');
-            }
-        }
         
         // ========== 登录 ==========
         async function loginUser() {
@@ -131,107 +77,19 @@
             const password = document.getElementById('loginPwd').value.trim();
             const messageDiv = document.getElementById('authMessage');
             
-            if (!/^1[3-9]\d{9}$/.test(phone)) {
-                messageDiv.innerHTML = '<p class="text-red">请输入有效的手机号</p>';
-                return;
-            }
-            
-            try {
-                // 管理员登录
-                if (phone === '18597123311' && password === 'Hm123321') {
-                    currentUser = { phone, name: '管理员', is_admin: true, id: 'admin' };
-                    showMainApp();
-                    messageDiv.innerHTML = '<p class="text-green">管理员登录成功</p>';
-                    return;
-                }
-                
-                // 普通用户登录
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('phone', phone)
-                    .eq('password_hash', password)
-                    .single();
-                
-                if (error || !data) {
-                    messageDiv.innerHTML = '<p class="text-red">手机号或密码错误</p>';
-                    return;
-                }
-                
-                currentUser = data;
+            if (phone === '18597123311' && password === 'Hm123321') {
+                document.getElementById('userNameDisplay').textContent = '管理员';
                 showMainApp();
-                messageDiv.innerHTML = '<p class="text-green">登录成功！</p>';
-                
-            } catch (err) {
-                console.error('登录错误:', err);
-                messageDiv.innerHTML = `<p class="text-red">登录失败: ${err.message}</p>`;
-            }
-        }
-        
-        // ========== 注册 ==========
-        async function registerUser() {
-            const phone = document.getElementById('regPhone').value.trim();
-            const name = document.getElementById('regName').value.trim();
-            const password = document.getElementById('regPwd').value.trim();
-            const confirm = document.getElementById('regConfirmPwd').value.trim();
-            const messageDiv = document.getElementById('authMessage');
-            
-            if (!/^1[3-9]\d{9}$/.test(phone)) {
-                messageDiv.innerHTML = '<p class="text-red">请输入有效的手机号</p>';
                 return;
             }
             
-            if (password !== confirm) {
-                messageDiv.innerHTML = '<p class="text-red">两次密码不一致</p>';
-                return;
-            }
-            
-            try {
-                // 检查手机号是否已存在
-                const { data: existing } = await supabase
-                    .from('users')
-                    .select('phone')
-                    .eq('phone', phone)
-                    .single();
-                
-                if (existing) {
-                    messageDiv.innerHTML = '<p class="text-red">该手机号已注册</p>';
-                    return;
-                }
-                
-                // 创建用户
-                const { data, error } = await supabase
-                    .from('users')
-                    .insert({
-                        phone: phone,
-                        name: name,
-                        password_hash: password,
-                        is_admin: false,
-                        created_at: new Date().toISOString()
-                    })
-                    .select()
-                    .single();
-                
-                if (error) {
-                    messageDiv.innerHTML = `<p class="text-red">注册失败: ${error.message}</p>`;
-                    return;
-                }
-                
-                messageDiv.innerHTML = '<p class="text-green">注册成功！请登录</p>';
-                setTimeout(() => switchTab('login'), 1500);
-                
-            } catch (err) {
-                console.error('注册错误:', err);
-                messageDiv.innerHTML = `<p class="text-red">注册失败: ${err.message}</p>`;
-            }
+            messageDiv.innerHTML = '<p class="text-red">管理员账号：18597123311 / Hm123321</p>';
         }
         
         // ========== 显示主应用 ==========
         function showMainApp() {
             document.getElementById('authSection').classList.add('hidden');
             document.getElementById('appSection').classList.remove('hidden');
-            document.getElementById('userNameDisplay').textContent = currentUser.name;
-            
             loadEcologicalData();
             loadSpeciesData();
         }
@@ -240,17 +98,11 @@
         async function loadEcologicalData() {
             const div = document.getElementById('ecologicalDataList');
             try {
-                const { data, error } = await supabase
-                    .from('ecological_data')
-                    .select('*')
-                    .order('record_date', { ascending: false })
-                    .limit(10);
-                
+                const { data, error } = await supabase.from('ecological_data').select('*').limit(10);
                 if (error) {
                     div.innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
                     return;
                 }
-                
                 div.innerHTML = data.map(item => `
                     <div class="data-item">
                         <h4>${item.data_type}</h4>
@@ -258,9 +110,8 @@
                         <p>日期: ${item.record_date}</p>
                     </div>
                 `).join('');
-                
             } catch (err) {
-                div.innerHTML = `<p class="text-red">加载异常: ${err.message}</p>`;
+                div.innerHTML = `<p class="text-red">异常: ${err.message}</p>`;
             }
         }
         
@@ -268,17 +119,11 @@
         async function loadSpeciesData() {
             const div = document.getElementById('speciesDataList');
             try {
-                const { data, error } = await supabase
-                    .from('species_records')
-                    .select('*')
-                    .order('observation_date', { ascending: false })
-                    .limit(10);
-                
+                const { data, error } = await supabase.from('species_records').select('*').limit(10);
                 if (error) {
                     div.innerHTML = `<p class="text-red">加载失败: ${error.message}</p>`;
                     return;
                 }
-                
                 div.innerHTML = data.map(item => `
                     <div class="data-item">
                         <h4>${item.species_name}</h4>
@@ -286,9 +131,8 @@
                         <p>日期: ${item.observation_date}</p>
                     </div>
                 `).join('');
-                
             } catch (err) {
-                div.innerHTML = `<p class="text-red">加载异常: ${err.message}</p>`;
+                div.innerHTML = `<p class="text-red">异常: ${err.message}</p>`;
             }
         }
         
@@ -296,21 +140,13 @@
         async function askQuestion() {
             const input = document.getElementById('questionInput');
             const question = input.value.trim();
-            
-            if (!question) {
-                alert('请输入问题');
-                return;
-            }
+            if (!question) return;
             
             const answer = getMockAnswer(question);
-            
             const div = document.getElementById('qaHistory');
             const qaItem = document.createElement('div');
             qaItem.className = 'data-item';
-            qaItem.innerHTML = `
-                <p><strong>问:</strong> ${question}</p>
-                <p><strong>答:</strong> ${answer}</p>
-            `;
+            qaItem.innerHTML = `<p><strong>问:</strong> ${question}</p><p><strong>答:</strong> ${answer}</p>`;
             div.insertBefore(qaItem, div.firstChild);
             
             input.value = '';
@@ -321,13 +157,11 @@
             const question = q.toLowerCase();
             if (question.includes('珍稀物种')) return "三江源的珍稀物种包括雪豹、藏羚羊、野牦牛、黑颈鹤等国家一级保护动物16种。";
             if (question.includes('保护措施')) return "三江源保护措施包括生态修复、退牧还草、生态移民、社区共管等。";
-            if (question.includes('中华水塔')) return "三江源被称为'中华水塔'，是长江、黄河、澜沧江的发源地。";
             return "三江源位于青海省南部，是长江、黄河、澜沧江的发源地，被称为'中华水塔'。";
         }
         
         // ========== 退出 ==========
         function logout() {
-            currentUser = null;
             document.getElementById('authSection').classList.remove('hidden');
             document.getElementById('appSection').classList.add('hidden');
         }
